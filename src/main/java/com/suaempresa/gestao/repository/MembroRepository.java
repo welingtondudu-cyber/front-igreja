@@ -35,6 +35,11 @@ public interface MembroRepository extends JpaRepository<Membro, Long>, JpaSpecif
            "WHERE m.statusCadastro = 'ATIVO'")
     List<Membro> findAllAtivosWithCargoAndLider();
 
+    @Query("SELECT m FROM Membro m " +
+           "LEFT JOIN FETCH m.cargo " +
+           "LEFT JOIN FETCH m.liderDireto")
+    List<Membro> findAllWithCargoAndLider();
+
     Optional<Membro> findByCpf(String cpf);
 
     @Query("SELECT COUNT(m) FROM Membro m " +
