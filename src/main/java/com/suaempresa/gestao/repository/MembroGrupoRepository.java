@@ -17,4 +17,6 @@ public interface MembroGrupoRepository extends JpaRepository<MembroGrupo, Long> 
     List<Grupo> findGruposByMembroId(@Param("membroId") Long membroId);
     
     boolean existsByGrupoIdAndMembroId(Long grupoId, Long membroId);
+
+    void deleteByMembroId(Long membroId);
 }

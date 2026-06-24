@@ -141,29 +141,20 @@ function CadastroEleicao({ onBack }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800 antialiased">
-      {/* HEADER */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 flex justify-between items-center w-full px-6 py-4 shadow-sm">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500 hover:text-slate-700 focus:outline-none"
-            title="Voltar"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <img
-            src="/logo.png"
-            alt="Logotipo Oficial da Igreja"
-            className="h-10 w-auto max-w-[150px] object-contain"
-          />
+    <div className="max-w-2xl w-full mx-auto space-y-6 pb-12">
+      {/* BREADCRUMB TITLE */}
+      <div className="flex items-center gap-3 mb-4 animate-in fade-in duration-200">
+        <button 
+          onClick={onBack}
+          className="p-2 hover:bg-slate-200 rounded-xl transition-colors text-slate-600 focus:outline-none border border-slate-200 bg-white"
+          title="Voltar"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <div className="text-sm font-semibold text-slate-500">
+          Eleição / <span className="text-slate-800 font-bold">Cadastrar Eleição</span>
         </div>
-        <div className="text-xs font-semibold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-full uppercase tracking-wider">
-          Cadastro de Eleição
-        </div>
-      </header>
-
-      <main className="flex-grow max-w-2xl w-full mx-auto p-4 sm:p-6 space-y-6">
+      </div>
 
         {/* Feedback */}
         {success && (
@@ -360,12 +351,6 @@ function CadastroEleicao({ onBack }) {
             )}
           </button>
         </form>
-      </main>
-
-      <footer className="bg-white border-t border-slate-200 mt-12 py-6 text-center text-xs text-slate-400">
-        <p className="font-semibold text-slate-500">Igreja Presbiteriana dos Ipês</p>
-        <p className="mt-1">Sistema Integrado de Gestão e Apuração de Assembleias © 2026</p>
-      </footer>
     </div>
   )
 }

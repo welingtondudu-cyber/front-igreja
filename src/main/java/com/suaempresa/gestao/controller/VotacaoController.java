@@ -72,4 +72,38 @@ public class VotacaoController {
         votacaoService.encerrarVotacao(id);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/api/admin/votacoes/{id}/restricoes")
+    @Operation(summary = "Listar restrições de voto (Admin)", description = "Retorna a lista de restrições de voto de membros para uma determinada votação.")
+    public ResponseEntity<java.util.List<VotacaoRestricaoDTO>> listarRestricoes(
+            @Parameter(description = "ID da votação", required = true) @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(votacaoService.listarRestricoes(id));
+    }
+
+    @PostMapping("/api/admin/votacoes/{id}/restricoes")
+    @Operation(summary = "Cadastrar restrição de voto (Admin)", description = "Registra uma nova restrição para impedir um membro específico de votar em determinada votação.")
+    public ResponseEntity<Void> cadastrarRestricao(
+            @Parameter(description = "ID da votação", required = true) @PathVariable Long id,
+            @RequestBody @Valid VotacaoRestricaoForm form
+    ) {
+        votacaoService.cadastrarRestricao(id, form.matricula(), form.motivo());
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    @DeleteMapping("/api/admin/votacoes/{id}/restricoes/{matricula}")
+    @Operation(summary = "Remover restrição de voto (Admin)", description = "Remove a restrição de voto para o membro na votação especificada.")
+    public ResponseEntity<Void> removerRestricao(
+            @Parameter(description = "ID da votação", required = true) @PathVariable Long id,
+            @Parameter(description = "Matrícula do membro", required = true) @PathVariable String matricula
+    ) {
+        votacaoService.removerRestricao(id, matricula);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/api/admin/votacoes")
+    @Operation(summary = "Listar todas as votações (Admin)", description = "Retorna a lista completa de todas as eleições e votações (ativas ou encerradas) registradas.")
+    public ResponseEntity<java.util.List<VotacaoAdminDTO>> listarTodasParaAdmin() {
+        return ResponseEntity.ok(votacaoService.listarTodasParaAdmin());
+    }
 }

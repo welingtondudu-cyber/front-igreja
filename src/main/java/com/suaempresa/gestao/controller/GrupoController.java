@@ -49,31 +49,33 @@ public class GrupoController {
         return ResponseEntity.ok(grupoService.atualizarGrupo(id, dto));
     }
 
-    @PostMapping("/{grupoId}/membros/{membroId}")
+    @PostMapping("/{grupoId}/membros/{matriculaMembro}")
     @Operation(summary = "Vincular membro ao grupo", description = "Adiciona a associação entre um membro e um grupo.")
     public ResponseEntity<Void> vincularMembro(
             @Parameter(description = "ID do grupo", required = true) @PathVariable Long grupoId,
-            @Parameter(description = "ID do membro a ser vinculado", required = true) @PathVariable Long membroId
+            @Parameter(description = "Matrícula do membro a ser vinculado", required = true) @PathVariable String matriculaMembro
     ) {
+        Long membroId = parseMatriculaToId(matriculaMembro);
         grupoService.vincularMembro(grupoId, membroId);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
-    @DeleteMapping("/{grupoId}/membros/{membroId}")
+    @DeleteMapping("/{grupoId}/membros/{matriculaMembro}")
     @Operation(summary = "Desvincular membro do grupo", description = "Remove a associação entre um membro e um grupo.")
     public ResponseEntity<Void> desvincularMembro(
             @Parameter(description = "ID do grupo", required = true) @PathVariable Long grupoId,
-            @Parameter(description = "ID do membro a ser desvinculado", required = true) @PathVariable Long membroId
+            @Parameter(description = "Matrícula do membro a ser desvinculado", required = true) @PathVariable String matriculaMembro
     ) {
+        Long membroId = parseMatriculaToId(matriculaMembro);
         grupoService.desvincularMembro(grupoId, membroId);
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/membros/{membroId}")
-    @Operation(summary = "Listar grupos do membro", description = "Retorna todos os grupos aos quais um membro específico está vinculado.")
-    public ResponseEntity<List<MembroGrupoDTO>> listarGruposDoMembro(
-            @Parameter(description = "ID do membro", required = true) @PathVariable Long membroId
-    ) {
-        return ResponseEntity.ok(grupoService.listarGruposDoMembro(membroId));
+    private Long parseMatriculaToId(String matricula) {
+        try {
+            return Long.parseLong(matricula);
+        } catch (NumberFormatException e) {
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Matrícula inválida: " + matricula);
+        }
     }
 }

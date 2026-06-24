@@ -14,6 +14,8 @@ public record MembroFormDTO(
         String sexo,
         String cpf,
         Long cargoId,
-        Long liderDiretoId
+        Long liderDiretoId,
+        java.util.List<Long> ministeriosIds,
+        java.util.List<Long> pequenosGruposIds
 ) {
 }

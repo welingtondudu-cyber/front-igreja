@@ -31,7 +31,9 @@ public class OrganogramaService {
             LocalDate nascimentoDe,
             LocalDate nascimentoAte
     ) {
-        List<Membro> todosMembros = membroRepository.findAllWithCargoAndLider();
+        List<Membro> todosMembros = membroRepository.findAllWithCargoAndLider().stream()
+                .filter(m -> m.getStatusCadastro() != null && m.getStatusCadastro().equalsIgnoreCase("ativo"))
+                .collect(Collectors.toList());
 
         // Determinar o status de cadastro padrão (ATIVO) caso não seja informado
         final String statusFiltro = (statusCadastro != null && !statusCadastro.isBlank()) 
@@ -94,6 +96,7 @@ public class OrganogramaService {
                                 m.getFotoPerfilUrl(),
                                 m.getCargo() != null ? m.getCargo().getTitulo() : null,
                                 m.getCargo() != null ? m.getCargo().getPesoHierarquico() : null,
+                                m.getWhatsapp(),
                                 new ArrayList<>()
                         )
                 ));
@@ -105,11 +108,11 @@ public class OrganogramaService {
             OrganogramaNodeDTO node = nodeMap.get(m.getId());
             Membro lider = m.getLiderDireto();
 
-            if (lider != null && nodeMap.containsKey(lider.getId())) {
+            if (lider != null && !lider.getId().equals(m.getId()) && nodeMap.containsKey(lider.getId())) {
                 OrganogramaNodeDTO liderNode = nodeMap.get(lider.getId());
                 liderNode.liderados().add(node);
             } else {
-                // Se o líder não estiver no conjunto exibido, este nó vira raiz no gráfico filtrado
+                // Se o líder não estiver no conjunto exibido ou for o próprio membro, este nó vira raiz
                 roots.add(node);
             }
         }

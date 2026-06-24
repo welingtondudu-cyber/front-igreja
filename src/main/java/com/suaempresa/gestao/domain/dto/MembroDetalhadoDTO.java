@@ -21,18 +21,26 @@ public record MembroDetalhadoDTO(
         String tituloCargo,
         String nomeLiderDireto,
         List<String> ministerios,
-        List<String> pequenosGrupos) {
+        List<String> pequenosGrupos,
+        Long cargoId,
+        Long liderDiretoId,
+        List<Long> ministeriosIds,
+        List<Long> pequenosGruposIds) {
     public static MembroDetalhadoDTO fromEntity(Membro m) {
         List<String> ministerios = new ArrayList<>();
         List<String> pequenosGrupos = new ArrayList<>();
+        List<Long> ministeriosIds = new ArrayList<>();
+        List<Long> pequenosGruposIds = new ArrayList<>();
 
         if (m.getMembrosGrupos() != null) {
             for (MembroGrupo mg : m.getMembrosGrupos()) {
                 if (mg.getGrupo() != null) {
                     if (mg.getGrupo().getTipoGrupo() == TipoGrupo.MINISTERIO) {
                         ministerios.add(mg.getGrupo().getNomeGrupo());
+                        ministeriosIds.add(mg.getGrupo().getId());
                     } else if (mg.getGrupo().getTipoGrupo() == TipoGrupo.PEQUENO_GRUPO) {
                         pequenosGrupos.add(mg.getGrupo().getNomeGrupo());
+                        pequenosGruposIds.add(mg.getGrupo().getId());
                     }
                 }
             }
@@ -52,6 +60,10 @@ public record MembroDetalhadoDTO(
                 m.getCargo() != null ? m.getCargo().getTitulo() : null,
                 m.getLiderDireto() != null ? m.getLiderDireto().getNomeCompleto() : null,
                 ministerios,
-                pequenosGrupos);
+                pequenosGrupos,
+                m.getCargo() != null ? m.getCargo().getId() : null,
+                m.getLiderDireto() != null ? m.getLiderDireto().getId() : null,
+                ministeriosIds,
+                pequenosGruposIds);
     }
 }

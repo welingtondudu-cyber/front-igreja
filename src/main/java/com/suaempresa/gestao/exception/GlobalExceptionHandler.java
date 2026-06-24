@@ -38,7 +38,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MembroRestritoException.class)
     public ResponseEntity<ProblemDetail> handleMembroRestrito(MembroRestritoException ex) {
-        return buildProblemDetail(HttpStatus.FORBIDDEN, "Membro Restrito", ex.getMessage());
+        return buildProblemDetail(HttpStatus.FORBIDDEN, "Membro Restrito", "Este membro possui restrição de voto para esta eleição. Motivo: " + ex.getMessage());
     }
 
     @ExceptionHandler(MembroNaoEncontradoException.class)

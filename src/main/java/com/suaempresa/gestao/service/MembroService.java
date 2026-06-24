@@ -7,10 +7,13 @@ import com.suaempresa.gestao.domain.entity.Cargo;
 import com.suaempresa.gestao.domain.entity.Membro;
 import com.suaempresa.gestao.domain.entity.MembroGrupo;
 import com.suaempresa.gestao.domain.entity.TipoGrupo;
+import com.suaempresa.gestao.domain.entity.Grupo;
 import com.suaempresa.gestao.exception.RegraNegocioException;
 import com.suaempresa.gestao.repository.CargoRepository;
 import com.suaempresa.gestao.repository.MembroRepository;
 import com.suaempresa.gestao.repository.MembroSpecification;
+import com.suaempresa.gestao.repository.GrupoRepository;
+import com.suaempresa.gestao.repository.MembroGrupoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -36,6 +39,8 @@ public class MembroService {
 
     private final MembroRepository membroRepository;
     private final CargoRepository cargoRepository;
+    private final GrupoRepository grupoRepository;
+    private final MembroGrupoRepository membroGrupoRepository;
 
     // ─── LISTAR COM FILTROS + PAGINAÇÃO ────────────────────────────────────────
 
@@ -88,6 +93,7 @@ public class MembroService {
         } catch (DataIntegrityViolationException e) {
             throw new RegraNegocioException("CPF já cadastrado para outro membro.");
         }
+        atualizarGrupos(membro, dto.ministeriosIds(), dto.pequenosGruposIds());
         return MembroDetalhadoDTO.fromEntity(membro);
     }
 
@@ -108,10 +114,11 @@ public class MembroService {
         }
         atualizarDadosEntidade(membro, dto);
         try {
-            membroRepository.flush();
+            membroRepository.saveAndFlush(membro);
         } catch (DataIntegrityViolationException e) {
             throw new RegraNegocioException("CPF já cadastrado para outro membro.");
         }
+        atualizarGrupos(membro, dto.ministeriosIds(), dto.pequenosGruposIds());
         return MembroDetalhadoDTO.fromEntity(membro);
     }
 
@@ -300,6 +307,8 @@ public class MembroService {
             Cargo cargo = cargoRepository.findById(dto.cargoId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cargo não encontrado"));
             membro.setCargo(cargo);
+        } else {
+            membro.setCargo(null);
         }
         if (dto.liderDiretoId() != null) {
             Membro lider = membroRepository.findById(dto.liderDiretoId())
@@ -312,6 +321,8 @@ public class MembroService {
                 throw new RegraNegocioException("O líder deve possuir cargo com peso hierárquico 1 ou 2.");
             }
             membro.setLiderDireto(lider);
+        } else {
+            membro.setLiderDireto(null);
         }
     }
 
@@ -361,5 +372,25 @@ public class MembroService {
     @Transactional(readOnly = true)
     public List<MembroSimplificadoDTO> listarMembrosAtivos() {
         return membroRepository.findAllAtivosSimplificado();
+    }
+
+    private void atualizarGrupos(Membro membro, List<Long> ministeriosIds, List<Long> pequenosGruposIds) {
+        membroGrupoRepository.deleteByMembroId(membro.getId());
+        membroGrupoRepository.flush();
+        List<Long> allGroupIds = new ArrayList<>();
+        if (ministeriosIds != null) allGroupIds.addAll(ministeriosIds);
+        if (pequenosGruposIds != null) allGroupIds.addAll(pequenosGruposIds);
+        
+        for (Long grupoId : allGroupIds) {
+            Grupo grupo = grupoRepository.findById(grupoId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Grupo não encontrado: " + grupoId));
+            
+            MembroGrupo vinculo = MembroGrupo.builder()
+                    .membro(membro)
+                    .grupo(grupo)
+                    .dataEntrada(LocalDate.now())
+                    .build();
+            membroGrupoRepository.save(vinculo);
+        }
     }
 }

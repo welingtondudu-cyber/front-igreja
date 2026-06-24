@@ -17,7 +17,7 @@ public interface MembroRepository extends JpaRepository<Membro, Long>, JpaSpecif
     @Query("SELECT new com.suaempresa.gestao.domain.dto.MembroSimplificadoDTO(" +
            "m.id, m.nomeCompleto, m.fotoPerfilUrl, c.titulo, m.statusCadastro) " +
            "FROM Membro m LEFT JOIN m.cargo c " +
-           "WHERE m.statusCadastro = 'ATIVO'")
+           "WHERE LOWER(m.statusCadastro) = 'ativo'")
     List<MembroSimplificadoDTO> findAllAtivosSimplificado();
 
     @Query("SELECT m FROM Membro m " +
@@ -32,7 +32,7 @@ public interface MembroRepository extends JpaRepository<Membro, Long>, JpaSpecif
     @Query("SELECT m FROM Membro m " +
            "LEFT JOIN FETCH m.cargo " +
            "LEFT JOIN FETCH m.liderDireto " +
-           "WHERE m.statusCadastro = 'ATIVO'")
+           "WHERE LOWER(m.statusCadastro) = 'ativo'")
     List<Membro> findAllAtivosWithCargoAndLider();
 
     @Query("SELECT m FROM Membro m " +
@@ -43,12 +43,13 @@ public interface MembroRepository extends JpaRepository<Membro, Long>, JpaSpecif
     Optional<Membro> findByCpf(String cpf);
 
     @Query("SELECT COUNT(m) FROM Membro m " +
-           "WHERE m.statusCadastro = 'ATIVO' " +
+           "WHERE LOWER(m.statusCadastro) = 'ativo' " +
+           "AND (m.cargo IS NULL OR (m.cargo.pesoHierarquico <> 4 AND m.cargo.titulo <> 'Visitante')) " +
            "AND m.dataNascimento IS NOT NULL " +
-           "AND (2026 - YEAR(m.dataNascimento)) >= 18 " +
+           "AND m.dataNascimento <= :limiteIdade " +
            "AND NOT EXISTS (" +
            "    SELECT r FROM VotacaoRestricao r " +
            "    WHERE r.id.membroId = m.id AND r.id.votacaoId = :votacaoId" +
            ")")
-    long countMembrosAptosParaVotar(@Param("votacaoId") Long votacaoId);
+    long countMembrosAptosParaVotar(@Param("votacaoId") Long votacaoId, @Param("limiteIdade") java.time.LocalDate limiteIdade);
 }

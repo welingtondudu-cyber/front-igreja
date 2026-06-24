@@ -48,14 +48,18 @@ public class VotacaoService {
             throw new MembroNaoElegivelException("Cadastro do membro não está ativo.");
         }
 
+        if (membro.getCargo() != null && (Integer.valueOf(4).equals(membro.getCargo().getPesoHierarquico()) || "Visitante".equalsIgnoreCase(membro.getCargo().getTitulo()))) {
+            throw new MembroNaoElegivelException("Visitantes não possuem direito a voto nesta assembleia.");
+        }
+
         // Validação de correspondência de ano de nascimento como fator de autenticação
         if (membro.getDataNascimento() == null || membro.getDataNascimento().getYear() != request.anoNascimento()) {
             throw new MembroNaoElegivelException("Ano de nascimento informado diverge do cadastro.");
         }
 
-        // Validação de Maioridade (Ano atual de 2026 conforme requisito)
-        int idade = 2026 - membro.getDataNascimento().getYear();
-        if (idade < 18) {
+        // Validação de Maioridade (18 anos em relação à data atual)
+        java.time.LocalDate limiteIdade = java.time.LocalDate.now().minusYears(18);
+        if (membro.getDataNascimento() == null || membro.getDataNascimento().isAfter(limiteIdade)) {
             throw new MembroMenorDeIdadeException("Menores de idade não possuem direito a voto nesta assembleia");
         }
 
@@ -153,7 +157,7 @@ public class VotacaoService {
         if (Boolean.FALSE.equals(votacao.getAtiva()) && votacao.getTotalAptosHistorico() != null) {
             totalAptos = votacao.getTotalAptosHistorico();
         } else {
-            totalAptos = membroRepository.countMembrosAptosParaVotar(votacaoId);
+            totalAptos = membroRepository.countMembrosAptosParaVotar(votacaoId, java.time.LocalDate.now().minusYears(18));
         }
 
         // 2. Calcular totalVotaram
@@ -195,7 +199,7 @@ public class VotacaoService {
         Votacao votacao = votacaoRepository.findById(votacaoId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Votação não encontrada"));
 
-        long quorum = membroRepository.countMembrosAptosParaVotar(votacaoId);
+        long quorum = membroRepository.countMembrosAptosParaVotar(votacaoId, java.time.LocalDate.now().minusYears(18));
 
         votacao.setTotalAptosHistorico(quorum);
         votacao.setAtiva(false);
@@ -280,5 +284,83 @@ public class VotacaoService {
             sb.append(CHARS.charAt(RANDOM.nextInt(CHARS.length())));
         }
         return sb.toString();
+    }
+
+    @Transactional(readOnly = true)
+    public List<VotacaoRestricaoDTO> listarRestricoes(Long votacaoId) {
+        if (!votacaoRepository.existsById(votacaoId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Votação não encontrada");
+        }
+        return votacaoRestricaoRepository.findByIdVotacaoId(votacaoId).stream()
+                .map(r -> new VotacaoRestricaoDTO(
+                        String.format("%04d", r.getMembro().getId()),
+                        r.getMembro().getNomeCompleto(),
+                        r.getMotivo()
+                ))
+                .toList();
+    }
+
+    @Transactional
+    public void cadastrarRestricao(Long votacaoId, String matricula, String motivo) {
+        Votacao votacao = votacaoRepository.findById(votacaoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Votação não encontrada"));
+
+        if (votacao.getAtiva() == null || !votacao.getAtiva()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível cadastrar restrições para uma votação encerrada");
+        }
+
+        Long membroId;
+        try {
+            membroId = Long.parseLong(matricula);
+        } catch (NumberFormatException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Matrícula inválida");
+        }
+
+        Membro membro = membroRepository.findById(membroId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
+
+        VotacaoRestricaoId restricaoId = new VotacaoRestricaoId(votacaoId, membroId);
+        if (votacaoRestricaoRepository.existsById(restricaoId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Membro já possui restrição para esta votação");
+        }
+
+        VotacaoRestricao restricao = VotacaoRestricao.builder()
+                .id(restricaoId)
+                .votacao(votacao)
+                .membro(membro)
+                .motivo(motivo)
+                .build();
+
+        votacaoRestricaoRepository.save(restricao);
+    }
+
+    @Transactional
+    public void removerRestricao(Long votacaoId, String matricula) {
+        Votacao votacao = votacaoRepository.findById(votacaoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Votação não encontrada"));
+
+        if (votacao.getAtiva() == null || !votacao.getAtiva()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível alterar restrições para uma votação encerrada");
+        }
+
+        Long membroId;
+        try {
+            membroId = Long.parseLong(matricula);
+        } catch (NumberFormatException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Matrícula inválida");
+        }
+
+        VotacaoRestricaoId restricaoId = new VotacaoRestricaoId(votacaoId, membroId);
+        VotacaoRestricao restricao = votacaoRestricaoRepository.findById(restricaoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restrição não encontrada"));
+
+        votacaoRestricaoRepository.delete(restricao);
+    }
+
+    @Transactional(readOnly = true)
+    public List<VotacaoAdminDTO> listarTodasParaAdmin() {
+        return votacaoRepository.findAll().stream()
+                .map(v -> new VotacaoAdminDTO(v.getId(), v.getTitulo(), v.getAtiva() != null && v.getAtiva()))
+                .toList();
     }
 }

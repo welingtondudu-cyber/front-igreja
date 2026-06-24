@@ -11,6 +11,8 @@ function Apuracao({ onBackToVote }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [showResults, setShowResults] = useState(true)
+  const [showEndConfirm, setShowEndConfirm] = useState(false)
+  const [showEndSuccess, setShowEndSuccess] = useState(false)
   
   // Real-time results state
   const [apuracaoData, setApuracaoData] = useState({
@@ -53,17 +55,19 @@ function Apuracao({ onBackToVote }) {
     ]
   }
 
-  // Fetch active elections to populate the dropdown selection
+  // Fetch all elections (active & closed) to populate the dropdown selection
   useEffect(() => {
     async function loadVotacoes() {
       try {
-        const response = await fetch('/api/public/votacoes/ativas')
+        const response = await fetch('/api/admin/votacoes')
         if (response.ok) {
           const data = await response.json()
           setVotacoes(data)
           if (data.length > 0) {
             setSelectedVotacaoId(data[0].id.toString())
             setSelectedVotacaoTitle(data[0].titulo)
+            // Se a primeira eleição carregada está ativa (ativa == true), oculta o resultado
+            setShowResults(!data[0].ativa)
           }
         }
       } catch (err) {
@@ -72,6 +76,51 @@ function Apuracao({ onBackToVote }) {
     }
     loadVotacoes()
   }, [])
+
+  // Handle election selection change
+  const handleVotacaoChange = (votacaoId) => {
+    setSelectedVotacaoId(votacaoId)
+    const selected = votacoes.find(v => v.id.toString() === votacaoId.toString())
+    if (selected) {
+      setSelectedVotacaoTitle(selected.titulo)
+      setShowResults(!selected.ativa)
+    }
+  }
+
+  const handleEndVotacao = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/admin/votacoes/${selectedVotacaoId}/encerrar`, {
+        method: 'POST'
+      })
+      if (response.ok) {
+        setShowEndConfirm(false)
+        setShowEndSuccess(true)
+        
+        // Refresh elections list
+        const listRes = await fetch('/api/admin/votacoes')
+        if (listRes.ok) {
+          const listData = await listRes.json()
+          setVotacoes(listData)
+        }
+        
+        // Refresh apuracao details
+        await fetchApuracao(selectedVotacaoId)
+        setShowResults(true) // Always reveal results after concluding!
+      } else {
+        const problem = await response.json().catch(() => ({}))
+        setError(problem.detail || 'Não foi possível encerrar a votação.')
+        setShowEndConfirm(false)
+      }
+    } catch (err) {
+      console.error('Erro ao encerrar votação:', err)
+      setError('Erro de conexão ao tentar encerrar a votação.')
+      setShowEndConfirm(false)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Load results whenever the selected election changes
   useEffect(() => {
@@ -138,70 +187,74 @@ function Apuracao({ onBackToVote }) {
   const isQuorumReached = apuracaoData.percentualParticipacao >= 33.333
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800 antialiased">
-      {/* HEADER LOGO */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 flex justify-between items-center w-full px-6 py-4 shadow-sm">
+    <div className="max-w-4xl w-full mx-auto space-y-6 pb-12">
+      {/* BREADCRUMB TITLE & SELECTOR */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 animate-in fade-in duration-200">
         <div className="flex items-center gap-3">
-          <button 
-            onClick={onBackToVote}
-            className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500 hover:text-slate-700 focus:outline-none"
-            title="Voltar para Fluxo de Votos"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <img
-            src="/logo.png"
-            alt="Logotipo Oficial da Igreja"
-            className="h-10 w-auto max-w-[150px] object-contain"
-          />
-        </div>
-        <div className="text-xs font-semibold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-full uppercase tracking-wider">
-          Apuração Eleição
-        </div>
-      </header>
-
-      {/* MAIN CONTENT CONTAINER */}
-      <main className="flex-grow max-w-4xl w-full mx-auto p-4 sm:p-6 space-y-6">
-        
-        {/* SECTION 1: CABEÇALHO DO RESULTADO */}
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-            <div className="space-y-1">
-              <span className="text-xs font-bold text-emerald-700 uppercase tracking-widest block">
-                Apuração em Tempo Real
-              </span>
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-                {selectedVotacaoTitle || 'Selecione uma Assembleia'}
-              </h1>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <select
-                value={selectedVotacaoId}
-                onChange={(e) => setSelectedVotacaoId(e.target.value)}
-                className="border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 text-slate-700 text-sm focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-colors cursor-pointer font-medium"
-              >
-                {votacoes.length === 0 ? (
-                  <option value="">Nenhuma votação ativa</option>
-                ) : (
-                  votacoes.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      Assembleia ID: {v.id}
-                    </option>
-                  ))
-                )}
-              </select>
-
-              <button
-                onClick={handleRefresh}
-                disabled={loading}
-                className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-2 rounded-xl text-sm transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none"
-              >
-                <RefreshCw className={`h-4 w-4 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">Atualizar Apuração</span>
-              </button>
-            </div>
+          <div className="text-sm font-semibold text-slate-500">
+            Eleição / <span className="text-slate-800 font-bold">Apuração Eleição</span>
           </div>
+        </div>
+
+        {/* DISGUISED ELECTION SELECTOR */}
+        <div className="flex items-center gap-2 text-xs font-semibold bg-white border border-slate-200 px-3.5 py-2 rounded-xl shadow-sm text-slate-600 animate-in fade-in duration-300">
+          <span>Selecione a Eleição:</span>
+          <select
+            value={selectedVotacaoId}
+            onChange={(e) => handleVotacaoChange(e.target.value)}
+            className="bg-transparent border-none font-bold text-emerald-700 focus:outline-none cursor-pointer py-0 focus:ring-0"
+            title="Selecionar Eleição"
+          >
+            {votacoes.length === 0 ? (
+              <option value="">Carregando eleições...</option>
+            ) : (
+              votacoes.map((v) => (
+                <option key={v.id} value={v.id} className="text-slate-800">
+                  {v.titulo} ({v.ativa ? 'Ativa' : 'Encerrada'})
+                </option>
+              ))
+            )}
+          </select>
+        </div>
+      </div>
+
+      {/* SECTION 1: CABEÇALHO DO RESULTADO */}
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+          <div className="space-y-1">
+            <span className="text-xs font-bold text-emerald-700 uppercase tracking-widest block">
+              Apuração em Tempo Real
+            </span>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+              {selectedVotacaoTitle || 'Selecione uma Assembleia'}
+            </h1>
+          </div>
+          
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <button
+              onClick={handleRefresh}
+              disabled={loading}
+              className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-2 rounded-xl text-sm transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none"
+            >
+              <RefreshCw className={`h-4 w-4 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
+              <span>Atualizar Apuração</span>
+            </button>
+
+            {(() => {
+              const selectedVotacao = votacoes.find(v => v.id.toString() === selectedVotacaoId.toString())
+              return selectedVotacao && selectedVotacao.ativa && (
+                <button
+                  onClick={() => setShowEndConfirm(true)}
+                  disabled={loading}
+                  className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-700 font-bold px-4 py-2 rounded-xl text-sm transition-all active:scale-[0.98] border border-red-200 focus:outline-none"
+                >
+                  <Lock className="h-4 w-4 text-red-500" />
+                  <span>Encerrar Assembleia</span>
+                </button>
+              )
+            })()}
+          </div>
+        </div>
 
           {/* Dinamic Quorum Tag/Badge */}
           <div className="pt-2">
@@ -421,13 +474,89 @@ function Apuracao({ onBackToVote }) {
             })}
           </div>
         </div>
-      </main>
+      {/* CONFIRM END MODAL */}
+      {showEndConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 p-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 text-red-700 mb-3">
+              <div className="bg-red-50 p-2 rounded-full">
+                <AlertTriangle className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">Encerrar Assembleia?</h3>
+            </div>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              Você está prestes a finalizar a votação de <strong>{selectedVotacaoTitle}</strong>. 
+              Ao confirmar:
+            </p>
+            <ul className="text-xs text-slate-500 list-disc pl-5 mt-2 space-y-1">
+              <li>Nenhum novo voto poderá ser registrado na urna.</li>
+              <li>O quórum atual será blindado e gravado no histórico.</li>
+              <li>Os resultados finais serão revelados e abertos para consulta pública.</li>
+            </ul>
+            <div className="mt-6 flex gap-2">
+              <button
+                onClick={() => setShowEndConfirm(false)}
+                className="w-1/2 border border-slate-200 text-slate-600 font-semibold py-2.5 rounded-xl hover:bg-slate-50 transition-colors text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleEndVotacao}
+                disabled={loading}
+                className="w-1/2 bg-red-600 text-white font-semibold py-2.5 rounded-xl hover:bg-red-700 transition-colors text-sm shadow-sm flex items-center justify-center gap-1.5"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Sim, Encerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* FOOTER METADATA */}
-      <footer className="bg-white border-t border-slate-200 mt-12 py-6 text-center text-xs text-slate-400">
-        <p className="font-semibold text-slate-500">Igreja Presbiteriana dos Ipês</p>
-        <p className="mt-1">Sistema Integrado de Gestão e Apuração de Assembleias © 2026</p>
-      </footer>
+      {/* SUCCESS CONCLUDED MODAL */}
+      {showEndSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 p-6 text-center animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex justify-center mb-3">
+              <div className="bg-emerald-50 p-3 rounded-full">
+                <CheckCircle2 className="h-8 w-8 text-emerald-700" />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-slate-900">Assembleia Concluída!</h3>
+            <p className="text-sm text-slate-500 mt-2">
+              A votação de <strong>{selectedVotacaoTitle}</strong> foi encerrada com sucesso.
+            </p>
+            
+            <div className="my-5 p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2.5 text-left">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-semibold text-slate-400">Membros Aptos:</span>
+                <span className="font-bold text-slate-800">{apuracaoData.totalAptos}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-semibold text-slate-400">Votos Computados:</span>
+                <span className="font-bold text-slate-800">{apuracaoData.totalVotaram}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-semibold text-slate-400">Quórum de Participação:</span>
+                <span className="font-bold text-emerald-800">{apuracaoData.percentualParticipacao.toFixed(2)}%</span>
+              </div>
+              <div className="flex justify-between items-center text-xs border-t border-slate-200/60 pt-2">
+                <span className="font-semibold text-slate-400">Status Legal:</span>
+                <span className={`font-bold ${isQuorumReached ? 'text-emerald-700' : 'text-amber-600'}`}>
+                  {isQuorumReached ? 'Válida (Quórum atingido)' : 'Sem Quórum Mínimo'}
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowEndSuccess(false)}
+              className="w-full bg-emerald-700 text-white font-semibold py-3 rounded-xl hover:bg-emerald-800 transition-colors shadow-sm"
+            >
+              Visualizar Apuração
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
