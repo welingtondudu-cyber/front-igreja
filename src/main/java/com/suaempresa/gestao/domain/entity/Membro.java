@@ -38,6 +38,7 @@ public class Membro {
 
     private String sexo;
 
+    @Column(name = "cpf", unique = true)
     private String cpf;
 
     @ManyToOne(fetch = FetchType.LAZY)

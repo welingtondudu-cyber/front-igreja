@@ -2,14 +2,17 @@ package com.suaempresa.gestao.repository;
 
 import com.suaempresa.gestao.domain.entity.Membro;
 import com.suaempresa.gestao.domain.dto.MembroSimplificadoDTO;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface MembroRepository extends JpaRepository<Membro, Long> {
+public interface MembroRepository extends JpaRepository<Membro, Long>, JpaSpecificationExecutor<Membro> {
 
     @Query("SELECT new com.suaempresa.gestao.domain.dto.MembroSimplificadoDTO(" +
            "m.id, m.nomeCompleto, m.fotoPerfilUrl, c.titulo, m.statusCadastro) " +
