@@ -4,7 +4,7 @@ import com.suaempresa.gestao.domain.entity.Membro;
 import java.time.LocalDate;
 
 public record MembroDetalhadoDTO(
-        Long id,
+        String matricula,
         String nomeCompleto,
         String whatsapp,
         String email,
@@ -15,11 +15,10 @@ public record MembroDetalhadoDTO(
         String sexo,
         String cpf,
         String tituloCargo,
-        String nomeLiderDireto
-) {
+        String nomeLiderDireto) {
     public static MembroDetalhadoDTO fromEntity(Membro m) {
         return new MembroDetalhadoDTO(
-                m.getId(),
+                m.getId() != null ? String.format("%04d", m.getId()) : null,
                 m.getNomeCompleto(),
                 m.getWhatsapp(),
                 m.getEmail(),
@@ -30,7 +29,6 @@ public record MembroDetalhadoDTO(
                 m.getSexo(),
                 m.getCpf(),
                 m.getCargo() != null ? m.getCargo().getTitulo() : null,
-                m.getLiderDireto() != null ? m.getLiderDireto().getNomeCompleto() : null
-        );
+                m.getLiderDireto() != null ? m.getLiderDireto().getNomeCompleto() : null);
     }
 }

@@ -387,8 +387,8 @@ function Apuracao({ onBackToVote }) {
                         </h3>
                         <p className="text-xs text-slate-400 font-medium">
                           {showResults 
-                            ? (candidato.membroId
-                                ? (candidato.nomeMembro ? `Membro: ${candidato.nomeMembro}` : `Membro ID: ${candidato.membroId}`)
+                            ? (candidato.membroMatricula
+                                ? (candidato.nomeMembro ? `Membro: ${candidato.nomeMembro}` : `Matrícula: ${candidato.membroMatricula}`)
                                 : 'Opção Geral')
                             : 'Identidade Oculta'}
                         </p>

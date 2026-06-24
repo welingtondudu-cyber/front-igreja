@@ -93,7 +93,7 @@ function CadastroEleicao({ onBack }) {
     // Validações básicas
     for (const op of opcoes) {
       if (!op.tituloOpcao.trim()) {
-        setError('Todas as opções devem ter um título ou ID de membro válido.')
+        setError('Todas as opções devem ter um título ou matrícula de membro válida.')
         return
       }
       if (op.membroId && op.membroErro) {
@@ -269,10 +269,10 @@ function CadastroEleicao({ onBack }) {
                     )}
                   </div>
 
-                  {/* ID do Membro */}
+                  {/* Matrícula do Membro */}
                   <div>
                     <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                      ID do Membro <span className="text-slate-400 font-normal normal-case">(opcional)</span>
+                      Matrícula do Membro <span className="text-slate-400 font-normal normal-case">(opcional)</span>
                     </label>
                     <div className="relative">
                       <input
@@ -281,7 +281,7 @@ function CadastroEleicao({ onBack }) {
                         value={opcao.membroId}
                         onChange={e => handleMembroIdChange(index, e.target.value)}
                         onBlur={() => handleMembroIdBlur(index)}
-                        placeholder="Ex: 42"
+                        placeholder="Ex: 0042"
                         className={`w-full border rounded-xl px-3.5 py-2.5 text-sm bg-white text-slate-800 focus:outline-none focus:ring-1 transition-colors pr-10 ${
                           opcao.membroErro
                             ? 'border-red-400 focus:border-red-500 focus:ring-red-500'

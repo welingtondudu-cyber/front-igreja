@@ -47,12 +47,10 @@ public class MembroService {
             Long liderDiretoId,
             LocalDate nascimentoDe,
             LocalDate nascimentoAte,
-            Pageable pageable
-    ) {
+            Pageable pageable) {
         Specification<Membro> spec = MembroSpecification.comFiltros(
                 nome, cpf, cargoId, tituloCargo, statusCadastro, liderDiretoId,
-                nascimentoDe, nascimentoAte
-        );
+                nascimentoDe, nascimentoAte);
         return membroRepository.findAll(spec, pageable)
                 .map(MembroDetalhadoDTO::fromEntity);
     }
@@ -125,17 +123,16 @@ public class MembroService {
             String statusCadastro,
             Long liderDiretoId,
             LocalDate nascimentoDe,
-            LocalDate nascimentoAte
-    ) {
+            LocalDate nascimentoAte) {
         Specification<Membro> spec = MembroSpecification.comFiltros(
                 nome, cpf, cargoId, tituloCargo, statusCadastro, liderDiretoId,
-                nascimentoDe, nascimentoAte
-        );
+                nascimentoDe, nascimentoAte);
         List<Membro> membros = membroRepository.findAll(spec);
         StringBuilder csv = new StringBuilder();
 
         // Cabeçalho
-        csv.append("id,nome_completo,cpf,whatsapp,email,foto_perfil_url,status_cadastro,data_adesao,data_nascimento,sexo,titulo_cargo\n");
+        csv.append(
+                "id,nome_completo,cpf,whatsapp,email,foto_perfil_url,status_cadastro,data_adesao,data_nascimento,sexo,titulo_cargo\n");
 
         for (Membro m : membros) {
             String cargoTitulo = m.getCargo() != null ? m.getCargo().getTitulo() : "";
@@ -150,12 +147,12 @@ public class MembroService {
                     m.getDataAdesao() != null ? m.getDataAdesao().toString() : "",
                     m.getDataNascimento() != null ? m.getDataNascimento().toString() : "",
                     csvField(m.getSexo()),
-                    csvField(cargoTitulo)
-            ));
+                    csvField(cargoTitulo)));
         }
 
-        // BOM UTF-8 (EF BB BF) garante que o Excel abre corretamente sem desconfigurar caracteres
-        byte[] bom = new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
+        // BOM UTF-8 (EF BB BF) garante que o Excel abre corretamente sem desconfigurar
+        // caracteres
+        byte[] bom = new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF };
         byte[] content = csv.toString().getBytes(StandardCharsets.UTF_8);
         byte[] result = new byte[bom.length + content.length];
         System.arraycopy(bom, 0, result, 0, bom.length);
@@ -182,22 +179,27 @@ public class MembroService {
                 List<Membro> membrosToSave = new ArrayList<>();
 
                 while ((line = br.readLine()) != null) {
-                    if (firstLine) { firstLine = false; continue; }
-                    if (line.isBlank()) continue;
+                    if (firstLine) {
+                        firstLine = false;
+                        continue;
+                    }
+                    if (line.isBlank())
+                        continue;
 
                     String[] cols = splitCsvLine(line);
-                    if (cols.length < 11) continue;
+                    if (cols.length < 11)
+                        continue;
 
-                    String nome       = unescapeCsv(cols[1]);
-                    String cpf        = unescapeCsv(cols[2]).replaceAll("\\D", "");
-                    String whatsapp   = unescapeCsv(cols[3]);
-                    String email      = unescapeCsv(cols[4]);
+                    String nome = unescapeCsv(cols[1]);
+                    String cpf = unescapeCsv(cols[2]).replaceAll("\\D", "");
+                    String whatsapp = unescapeCsv(cols[3]);
+                    String email = unescapeCsv(cols[4]);
                     String fotoPerfil = unescapeCsv(cols[5]);
-                    String status     = unescapeCsv(cols[6]);
+                    String status = unescapeCsv(cols[6]);
                     String dataAdesao = unescapeCsv(cols[7]);
-                    String dataNasc   = unescapeCsv(cols[8]);
-                    String sexo       = unescapeCsv(cols[9]);
-                    String tituloCargo= unescapeCsv(cols[10]);
+                    String dataNasc = unescapeCsv(cols[8]);
+                    String sexo = unescapeCsv(cols[9]);
+                    String tituloCargo = unescapeCsv(cols[10]);
 
                     // Upsert por CPF: atualiza se já existir, cria se não existir
                     Membro membro;
@@ -207,12 +209,18 @@ public class MembroService {
                         membro = new Membro();
                     }
 
-                    if (nome != null && !nome.isBlank()) membro.setNomeCompleto(nome);
-                    if (!cpf.isBlank()) membro.setCpf(cpf);
-                    if (whatsapp != null && !whatsapp.isBlank()) membro.setWhatsapp(whatsapp);
-                    if (email != null && !email.isBlank()) membro.setEmail(email);
-                    if (fotoPerfil != null && !fotoPerfil.isBlank()) membro.setFotoPerfilUrl(fotoPerfil);
-                    if (status != null && !status.isBlank()) membro.setStatusCadastro(status);
+                    if (nome != null && !nome.isBlank())
+                        membro.setNomeCompleto(nome);
+                    if (!cpf.isBlank())
+                        membro.setCpf(cpf);
+                    if (whatsapp != null && !whatsapp.isBlank())
+                        membro.setWhatsapp(whatsapp);
+                    if (email != null && !email.isBlank())
+                        membro.setEmail(email);
+                    if (fotoPerfil != null && !fotoPerfil.isBlank())
+                        membro.setFotoPerfilUrl(fotoPerfil);
+                    if (status != null && !status.isBlank())
+                        membro.setStatusCadastro(status);
 
                     if (sexo != null && !sexo.isBlank()) {
                         validarSexo(sexo);
@@ -224,8 +232,7 @@ public class MembroService {
                     if (tituloCargo != null && !tituloCargo.isBlank()) {
                         Cargo cargo = cargoRepository.findByTituloIgnoreCase(tituloCargo.trim())
                                 .orElseGet(() -> cargoRepository.save(
-                                        Cargo.builder().titulo(tituloCargo.trim()).pesoHierarquico(0).build()
-                                ));
+                                        Cargo.builder().titulo(tituloCargo.trim()).pesoHierarquico(0).build()));
                         membro.setCargo(cargo);
                     }
 
@@ -237,25 +244,34 @@ public class MembroService {
         } catch (RegraNegocioException e) {
             throw e;
         } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Erro ao processar o arquivo CSV: " + e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Erro ao processar o arquivo CSV: " + e.getMessage(), e);
         }
     }
 
     // ─── HELPERS ───────────────────────────────────────────────────────────────
 
     private void atualizarDadosEntidade(Membro membro, MembroFormDTO dto) {
-        if (dto.nomeCompleto() != null) membro.setNomeCompleto(dto.nomeCompleto());
-        if (dto.whatsapp() != null) membro.setWhatsapp(dto.whatsapp());
-        if (dto.email() != null) membro.setEmail(dto.email());
-        if (dto.fotoPerfilUrl() != null) membro.setFotoPerfilUrl(dto.fotoPerfilUrl());
-        if (dto.statusCadastro() != null) membro.setStatusCadastro(dto.statusCadastro());
-        if (dto.dataAdesao() != null) membro.setDataAdesao(dto.dataAdesao());
-        if (dto.dataNascimento() != null) membro.setDataNascimento(dto.dataNascimento());
+        if (dto.nomeCompleto() != null)
+            membro.setNomeCompleto(dto.nomeCompleto());
+        if (dto.whatsapp() != null)
+            membro.setWhatsapp(dto.whatsapp());
+        if (dto.email() != null)
+            membro.setEmail(dto.email());
+        if (dto.fotoPerfilUrl() != null)
+            membro.setFotoPerfilUrl(dto.fotoPerfilUrl());
+        if (dto.statusCadastro() != null)
+            membro.setStatusCadastro(dto.statusCadastro());
+        if (dto.dataAdesao() != null)
+            membro.setDataAdesao(dto.dataAdesao());
+        if (dto.dataNascimento() != null)
+            membro.setDataNascimento(dto.dataNascimento());
         if (dto.sexo() != null) {
             validarSexo(dto.sexo());
             membro.setSexo(dto.sexo().trim().equalsIgnoreCase("masculino") ? "Masculino" : "Feminino");
         }
-        if (dto.cpf() != null) membro.setCpf(dto.cpf().replaceAll("\\D", ""));
+        if (dto.cpf() != null)
+            membro.setCpf(dto.cpf().replaceAll("\\D", ""));
         if (dto.cargoId() != null) {
             Cargo cargo = cargoRepository.findById(dto.cargoId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cargo não encontrado"));
@@ -286,13 +302,15 @@ public class MembroService {
 
     /** Formata um campo CSV: envolve em aspas e escapa aspas internas. */
     private String csvField(String value) {
-        if (value == null || value.isBlank()) return "";
+        if (value == null || value.isBlank())
+            return "";
         return "\"" + value.replace("\"", "\"\"") + "\"";
     }
 
     /** Remove aspas e unescapa aspas duplicadas de um campo CSV. */
     private String unescapeCsv(String data) {
-        if (data == null) return "";
+        if (data == null)
+            return "";
         String t = data.trim();
         if (t.startsWith("\"") && t.endsWith("\"") && t.length() >= 2) {
             t = t.substring(1, t.length() - 1);
@@ -306,7 +324,8 @@ public class MembroService {
     }
 
     private Optional<LocalDate> parseDateSafe(String dateStr) {
-        if (dateStr == null || dateStr.isBlank()) return Optional.empty();
+        if (dateStr == null || dateStr.isBlank())
+            return Optional.empty();
         try {
             return Optional.of(LocalDate.parse(dateStr.trim()));
         } catch (DateTimeParseException e) {
