@@ -488,7 +488,7 @@ export default function MembrosManager() {
           <h1 className="text-2xl font-bold text-slate-900">Gestão de Membros</h1>
           <p className="text-sm text-slate-500 mt-1">Consulte, cadastre e gerencie a base oficial de membros da igreja.</p>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <button
             onClick={() => {
               setWizardCpf('')
@@ -496,7 +496,7 @@ export default function MembrosManager() {
               setWizardError(null)
               setShowWizard(true)
             }}
-            className="flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-2 px-4 rounded-xl transition-colors shadow-sm text-sm flex-1 sm:flex-none"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-2 px-4 rounded-xl transition-colors shadow-sm text-sm flex-1 sm:flex-none"
           >
             <Plus className="h-4.5 w-4.5" />
             Adicionar Membro
@@ -508,14 +508,14 @@ export default function MembrosManager() {
               setImportMessage('')
               setShowImportModal(true)}
             }
-            className="flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold py-2 px-4 rounded-xl transition-colors text-sm"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold py-2 px-4 rounded-xl transition-colors text-sm"
           >
             <Upload className="h-4.5 w-4.5" />
             Importar CSV
           </button>
           <button
             onClick={handleExportCSV}
-            className="flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold py-2 px-4 rounded-xl transition-colors text-sm"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold py-2 px-4 rounded-xl transition-colors text-sm"
           >
             <Download className="h-4.5 w-4.5" />
             Exportar
@@ -1161,7 +1161,7 @@ export default function MembrosManager() {
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                             CPF *
@@ -1189,7 +1189,7 @@ export default function MembrosManager() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                             Data de Nascimento *
@@ -1255,7 +1255,7 @@ export default function MembrosManager() {
                   {/* TAB 3: DADOS ECLESIASTICOS */}
                   {wizardTab === 'eclesiasticos' && (
                     <div className="space-y-4 animate-in fade-in duration-200">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                             Líder Direto
@@ -1288,7 +1288,7 @@ export default function MembrosManager() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                             Status do Cadastro

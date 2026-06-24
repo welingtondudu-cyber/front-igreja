@@ -220,7 +220,7 @@ export default function OrganogramaView({ onBack }) {
       </div>
 
       {/* TREE CONTENT CONTAINER */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 overflow-x-auto">
         {loading ? (
           <div className="p-12 flex flex-col items-center justify-center">
             <Loader2 className="h-10 w-10 text-emerald-700 animate-spin mb-2" />
