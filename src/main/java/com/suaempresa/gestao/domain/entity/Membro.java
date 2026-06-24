@@ -48,4 +48,8 @@ public class Membro {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "lider_direto_id")
     private Membro liderDireto;
+
+    @OneToMany(mappedBy = "membro", fetch = FetchType.LAZY)
+    @Builder.Default
+    private java.util.List<MembroGrupo> membrosGrupos = new java.util.ArrayList<>();
 }

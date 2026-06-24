@@ -5,6 +5,8 @@ import com.suaempresa.gestao.domain.dto.MembroFormDTO;
 import com.suaempresa.gestao.domain.dto.MembroSimplificadoDTO;
 import com.suaempresa.gestao.domain.entity.Cargo;
 import com.suaempresa.gestao.domain.entity.Membro;
+import com.suaempresa.gestao.domain.entity.MembroGrupo;
+import com.suaempresa.gestao.domain.entity.TipoGrupo;
 import com.suaempresa.gestao.exception.RegraNegocioException;
 import com.suaempresa.gestao.repository.CargoRepository;
 import com.suaempresa.gestao.repository.MembroRepository;
@@ -47,10 +49,11 @@ public class MembroService {
             Long liderDiretoId,
             LocalDate nascimentoDe,
             LocalDate nascimentoAte,
+            Long grupoId,
             Pageable pageable) {
         Specification<Membro> spec = MembroSpecification.comFiltros(
                 nome, cpf, cargoId, tituloCargo, statusCadastro, liderDiretoId,
-                nascimentoDe, nascimentoAte);
+                nascimentoDe, nascimentoAte, grupoId);
         return membroRepository.findAll(spec, pageable)
                 .map(MembroDetalhadoDTO::fromEntity);
     }
@@ -123,21 +126,40 @@ public class MembroService {
             String statusCadastro,
             Long liderDiretoId,
             LocalDate nascimentoDe,
-            LocalDate nascimentoAte) {
+            LocalDate nascimentoAte,
+            Long grupoId) {
         Specification<Membro> spec = MembroSpecification.comFiltros(
                 nome, cpf, cargoId, tituloCargo, statusCadastro, liderDiretoId,
-                nascimentoDe, nascimentoAte);
+                nascimentoDe, nascimentoAte, grupoId);
         List<Membro> membros = membroRepository.findAll(spec);
         StringBuilder csv = new StringBuilder();
 
         // Cabeçalho
         csv.append(
-                "id,nome_completo,cpf,whatsapp,email,foto_perfil_url,status_cadastro,data_adesao,data_nascimento,sexo,titulo_cargo\n");
+                "matricula,nome_completo,cpf,whatsapp,email,foto_perfil_url,status_cadastro,data_adesao,data_nascimento,sexo,titulo_cargo,ministerios,pequenos_grupos\n");
 
         for (Membro m : membros) {
             String cargoTitulo = m.getCargo() != null ? m.getCargo().getTitulo() : "";
-            csv.append(String.format("%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
-                    m.getId(),
+            String matricula = m.getId() != null ? String.format("%04d", m.getId()) : "";
+
+            List<String> ministeriosList = new ArrayList<>();
+            List<String> pequenosGruposList = new ArrayList<>();
+            if (m.getMembrosGrupos() != null) {
+                for (MembroGrupo mg : m.getMembrosGrupos()) {
+                    if (mg.getGrupo() != null) {
+                        if (mg.getGrupo().getTipoGrupo() == TipoGrupo.MINISTERIO) {
+                            ministeriosList.add(mg.getGrupo().getNomeGrupo());
+                        } else if (mg.getGrupo().getTipoGrupo() == TipoGrupo.PEQUENO_GRUPO) {
+                            pequenosGruposList.add(mg.getGrupo().getNomeGrupo());
+                        }
+                    }
+                }
+            }
+            String ministeriosStr = String.join("; ", ministeriosList);
+            String pequenosGruposStr = String.join("; ", pequenosGruposList);
+
+            csv.append(String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+                    matricula,
                     csvField(m.getNomeCompleto()),
                     csvField(m.getCpf()),
                     csvField(m.getWhatsapp()),
@@ -147,12 +169,14 @@ public class MembroService {
                     m.getDataAdesao() != null ? m.getDataAdesao().toString() : "",
                     m.getDataNascimento() != null ? m.getDataNascimento().toString() : "",
                     csvField(m.getSexo()),
-                    csvField(cargoTitulo)));
+                    csvField(cargoTitulo),
+                    csvField(ministeriosStr),
+                    csvField(pequenosGruposStr)
+            ));
         }
 
-        // BOM UTF-8 (EF BB BF) garante que o Excel abre corretamente sem desconfigurar
-        // caracteres
-        byte[] bom = new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF };
+        // BOM UTF-8 (EF BB BF) garante que o Excel abre corretamente sem desconfigurar caracteres
+        byte[] bom = new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
         byte[] content = csv.toString().getBytes(StandardCharsets.UTF_8);
         byte[] result = new byte[bom.length + content.length];
         System.arraycopy(bom, 0, result, 0, bom.length);

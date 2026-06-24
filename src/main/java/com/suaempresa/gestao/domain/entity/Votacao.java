@@ -26,4 +26,10 @@ public class Votacao {
 
     @Column(name = "data_criacao", nullable = false)
     private LocalDateTime dataCriacao;
+
+    @Column(name = "total_aptos_historico")
+    private Long totalAptosHistorico;
+
+    @Column(name = "data_encerramento")
+    private LocalDateTime dataEncerramento;
 }

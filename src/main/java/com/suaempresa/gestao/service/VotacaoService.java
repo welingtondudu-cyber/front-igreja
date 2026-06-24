@@ -145,12 +145,16 @@ public class VotacaoService {
 
     @Transactional(readOnly = true)
     public ApuracaoResponse obterApuracao(Long votacaoId) {
-        if (!votacaoRepository.existsById(votacaoId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Votação não encontrada");
-        }
+        Votacao votacao = votacaoRepository.findById(votacaoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Votação não encontrada"));
 
-        // 1. Calcular totalAptos
-        long totalAptos = membroRepository.countMembrosAptosParaVotar(votacaoId);
+        // 1. Calcular/Buscar totalAptos
+        long totalAptos;
+        if (Boolean.FALSE.equals(votacao.getAtiva()) && votacao.getTotalAptosHistorico() != null) {
+            totalAptos = votacao.getTotalAptosHistorico();
+        } else {
+            totalAptos = membroRepository.countMembrosAptosParaVotar(votacaoId);
+        }
 
         // 2. Calcular totalVotaram
         long totalVotaram = votacaoRegistroRepository.countByIdVotacaoId(votacaoId);
@@ -184,6 +188,20 @@ public class VotacaoService {
         }
 
         return new ApuracaoResponse(totalAptos, totalVotaram, percentualParticipacao, resultados);
+    }
+
+    @Transactional
+    public void encerrarVotacao(Long votacaoId) {
+        Votacao votacao = votacaoRepository.findById(votacaoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Votação não encontrada"));
+
+        long quorum = membroRepository.countMembrosAptosParaVotar(votacaoId);
+
+        votacao.setTotalAptosHistorico(quorum);
+        votacao.setAtiva(false);
+        votacao.setDataEncerramento(LocalDateTime.now());
+
+        votacaoRepository.save(votacao);
     }
 
     @Transactional

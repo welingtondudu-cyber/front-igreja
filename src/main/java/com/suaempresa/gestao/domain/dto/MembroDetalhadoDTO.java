@@ -1,7 +1,11 @@
 package com.suaempresa.gestao.domain.dto;
 
 import com.suaempresa.gestao.domain.entity.Membro;
+import com.suaempresa.gestao.domain.entity.MembroGrupo;
+import com.suaempresa.gestao.domain.entity.TipoGrupo;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 public record MembroDetalhadoDTO(
         String matricula,
@@ -15,8 +19,25 @@ public record MembroDetalhadoDTO(
         String sexo,
         String cpf,
         String tituloCargo,
-        String nomeLiderDireto) {
+        String nomeLiderDireto,
+        List<String> ministerios,
+        List<String> pequenosGrupos) {
     public static MembroDetalhadoDTO fromEntity(Membro m) {
+        List<String> ministerios = new ArrayList<>();
+        List<String> pequenosGrupos = new ArrayList<>();
+
+        if (m.getMembrosGrupos() != null) {
+            for (MembroGrupo mg : m.getMembrosGrupos()) {
+                if (mg.getGrupo() != null) {
+                    if (mg.getGrupo().getTipoGrupo() == TipoGrupo.MINISTERIO) {
+                        ministerios.add(mg.getGrupo().getNomeGrupo());
+                    } else if (mg.getGrupo().getTipoGrupo() == TipoGrupo.PEQUENO_GRUPO) {
+                        pequenosGrupos.add(mg.getGrupo().getNomeGrupo());
+                    }
+                }
+            }
+        }
+
         return new MembroDetalhadoDTO(
                 m.getId() != null ? String.format("%04d", m.getId()) : null,
                 m.getNomeCompleto(),
@@ -29,6 +50,8 @@ public record MembroDetalhadoDTO(
                 m.getSexo(),
                 m.getCpf(),
                 m.getCargo() != null ? m.getCargo().getTitulo() : null,
-                m.getLiderDireto() != null ? m.getLiderDireto().getNomeCompleto() : null);
+                m.getLiderDireto() != null ? m.getLiderDireto().getNomeCompleto() : null,
+                ministerios,
+                pequenosGrupos);
     }
 }

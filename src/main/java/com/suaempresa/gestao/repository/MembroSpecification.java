@@ -20,7 +20,8 @@ public class MembroSpecification {
             String statusCadastro,
             Long liderDiretoId,
             LocalDate nascimentoDe,
-            LocalDate nascimentoAte
+            LocalDate nascimentoAte,
+            Long grupoId
     ) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -29,6 +30,12 @@ public class MembroSpecification {
             Join<Object, Object> cargo = root.join("cargo", JoinType.LEFT);
             // Join com liderDireto
             Join<Object, Object> lider = root.join("liderDireto", JoinType.LEFT);
+
+            // Filtro por ID de grupo/ministério
+            if (grupoId != null) {
+                Join<Object, Object> membrosGruposJoin = root.join("membrosGrupos");
+                predicates.add(cb.equal(membrosGruposJoin.get("grupo").get("id"), grupoId));
+            }
 
             // Filtro por parte do nome (case-insensitive, sem acento não é necessário pois ILIKE já trata)
             if (nome != null && !nome.isBlank()) {

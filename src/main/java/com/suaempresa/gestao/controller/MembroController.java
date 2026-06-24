@@ -20,6 +20,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.Map;
@@ -71,20 +72,23 @@ public class MembroController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate nascimentoDe,
             @Parameter(description = "Filtro por data de nascimento final (período - yyyy-MM-dd)")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate nascimentoAte,
+            @Parameter(description = "Filtro por ID do grupo ou ministério")
+            @RequestParam(required = false) Long grupoId,
             @ParameterObject @PageableDefault(size = 20, sort = "nomeCompleto", direction = Sort.Direction.ASC) Pageable pageable
     ) {
         Page<MembroDetalhadoDTO> page = membroService.listarComFiltros(
                 nome, cpf, cargoId, tituloCargo, statusCadastro,
-                liderDiretoId, nascimentoDe, nascimentoAte, pageable
+                liderDiretoId, nascimentoDe, nascimentoAte, grupoId, pageable
         );
         return ResponseEntity.ok(page);
     }
 
-    @GetMapping("/{id}")
-    @Operation(summary = "Buscar membro por ID", description = "Retorna os detalhes completos de um membro específico pelo seu ID.")
-    public ResponseEntity<MembroDetalhadoDTO> buscarPorId(
-            @Parameter(description = "ID do membro", required = true) @PathVariable Long id
+    @GetMapping("/{matricula}")
+    @Operation(summary = "Buscar membro por matrícula", description = "Retorna os detalhes completos de um membro específico pela sua matrícula de 4 dígitos.")
+    public ResponseEntity<MembroDetalhadoDTO> buscarPorMatricula(
+            @Parameter(description = "Matrícula de 4 dígitos do membro", required = true) @PathVariable String matricula
     ) {
+        Long id = parseMatriculaToId(matricula);
         return ResponseEntity.ok(membroService.buscarPorId(id));
     }
 
@@ -94,13 +98,22 @@ public class MembroController {
         return ResponseEntity.status(HttpStatus.CREATED).body(membroService.criar(dto));
     }
 
-    @PutMapping("/{id}")
-    @Operation(summary = "Atualizar membro existente", description = "Atualiza todas as informações de um membro específico a partir de seu ID.")
+    @PutMapping("/{matricula}")
+    @Operation(summary = "Atualizar membro existente", description = "Atualiza todas as informações de um membro específico a partir de sua matrícula de 4 dígitos.")
     public ResponseEntity<MembroDetalhadoDTO> atualizar(
-            @Parameter(description = "ID do membro a ser atualizado", required = true) @PathVariable Long id,
+            @Parameter(description = "Matrícula de 4 dígitos do membro a ser atualizado", required = true) @PathVariable String matricula,
             @RequestBody @Valid MembroFormDTO dto
     ) {
+        Long id = parseMatriculaToId(matricula);
         return ResponseEntity.ok(membroService.atualizar(id, dto));
+    }
+
+    private Long parseMatriculaToId(String matricula) {
+        try {
+            return Long.parseLong(matricula);
+        } catch (NumberFormatException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Matrícula inválida: " + matricula);
+        }
     }
 
     @GetMapping(value = "/exportar/csv", produces = "text/csv;charset=UTF-8")
@@ -121,11 +134,13 @@ public class MembroController {
             @Parameter(description = "Filtro por data de nascimento inicial (período - yyyy-MM-dd)")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate nascimentoDe,
             @Parameter(description = "Filtro por data de nascimento final (período - yyyy-MM-dd)")
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate nascimentoAte
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate nascimentoAte,
+            @Parameter(description = "Filtro por ID do grupo ou ministério")
+            @RequestParam(required = false) Long grupoId
     ) {
         byte[] csvData = membroService.exportarCsv(
                 nome, cpf, cargoId, tituloCargo, statusCadastro,
-                liderDiretoId, nascimentoDe, nascimentoAte
+                liderDiretoId, nascimentoDe, nascimentoAte, grupoId
         );
 
         HttpHeaders headers = new HttpHeaders();

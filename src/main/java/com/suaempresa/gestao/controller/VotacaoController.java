@@ -63,4 +63,13 @@ public class VotacaoController {
         ApuracaoResponse response = votacaoService.obterApuracao(id);
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/api/admin/votacoes/{id}/encerrar")
+    @Operation(summary = "Encerrar votação (Admin)", description = "Encerra uma votação ativa, calcula e salva o quórum final (total de membros aptos) na coluna histórica e define o timestamp de encerramento.")
+    public ResponseEntity<Void> encerrarVotacao(
+            @Parameter(description = "ID da votação a ser encerrada", required = true) @PathVariable Long id
+    ) {
+        votacaoService.encerrarVotacao(id);
+        return ResponseEntity.ok().build();
+    }
 }
