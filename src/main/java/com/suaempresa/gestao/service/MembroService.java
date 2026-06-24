@@ -301,8 +301,13 @@ public class MembroService {
             validarSexo(dto.sexo());
             membro.setSexo(dto.sexo().trim().equalsIgnoreCase("masculino") ? "Masculino" : "Feminino");
         }
-        if (dto.cpf() != null)
-            membro.setCpf(dto.cpf().replaceAll("\\D", ""));
+        if (dto.cpf() != null) {
+            String cpfLimpo = dto.cpf().replaceAll("\\D", "");
+            membro.setCpf(cpfLimpo.isBlank() ? null : cpfLimpo);
+        }
+        if (dto.observacao() != null) {
+            membro.setObservacao(dto.observacao());
+        }
         if (dto.cargoId() != null) {
             Cargo cargo = cargoRepository.findById(dto.cargoId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cargo não encontrado"));

@@ -3,7 +3,7 @@ import {
   Search, Plus, Download, Upload, Info, Edit, UserMinus, Phone,
   X, Check, AlertCircle, Loader2, Filter, ChevronDown, ChevronUp,
   User, Mail, Calendar, Hash, MapPin, Award, CheckCircle2, RefreshCw,
-  UserCheck
+  UserCheck, Users
 } from 'lucide-react'
 
 const WhatsAppIcon = (props) => (
@@ -12,7 +12,7 @@ const WhatsAppIcon = (props) => (
   </svg>
 )
 
-export default function MembrosManager() {
+export default function MembrosManager({ onViewOrganograma }) {
   // Members List State
   const [members, setMembers] = useState([])
   const [totalPages, setTotalPages] = useState(0)
@@ -74,6 +74,17 @@ export default function MembrosManager() {
 
   // Selected tab in wizard step 2
   const [wizardTab, setWizardTab] = useState('pessoais') // 'pessoais' | 'contato' | 'eclesiasticos'
+
+  // Convidado Modal States
+  const [showConvidadoModal, setShowConvidadoModal] = useState(false)
+  const [convidadoLoading, setConvidadoLoading] = useState(false)
+  const [convidadoError, setConvidadoError] = useState(null)
+  const [convidadoFormData, setConvidadoFormData] = useState({
+    nomeCompleto: '',
+    whatsapp: '',
+    dataNascimento: '',
+    observacao: ''
+  })
 
   // Load lists on mount
   useEffect(() => {
@@ -329,7 +340,8 @@ export default function MembrosManager() {
               cargoId: detail.cargoId ? String(detail.cargoId) : '',
               liderDiretoId: detail.liderDiretoId ? String(detail.liderDiretoId) : '',
               ministeriosIds: detail.ministeriosIds || [],
-              pequenosGruposIds: detail.pequenosGruposIds || []
+              pequenosGruposIds: detail.pequenosGruposIds || [],
+              observacao: detail.observacao || ''
             })
             setWizardStep(2)
           } else {
@@ -351,7 +363,8 @@ export default function MembrosManager() {
             cargoId: '',
             liderDiretoId: '',
             ministeriosIds: [],
-            pequenosGruposIds: []
+            pequenosGruposIds: [],
+            observacao: ''
           })
           setWizardStep(2)
         }
@@ -396,7 +409,8 @@ export default function MembrosManager() {
       cargoId: formData.cargoId ? parseInt(formData.cargoId) : null,
       liderDiretoId: formData.liderDiretoId ? parseInt(formData.liderDiretoId) : null,
       dataAdesao: formData.dataAdesao || null,
-      dataNascimento: formData.dataNascimento || null
+      dataNascimento: formData.dataNascimento || null,
+      observacao: formData.observacao || null
     }
 
     try {
@@ -420,6 +434,52 @@ export default function MembrosManager() {
       setWizardError('Falha ao conectar com o servidor.')
     } finally {
       setWizardLoading(false)
+    }
+  }
+
+  const handleConvidadoSubmit = async (e) => {
+    e.preventDefault()
+    if (!convidadoFormData.nomeCompleto || !convidadoFormData.whatsapp) {
+      setConvidadoError('Nome completo e WhatsApp são obrigatórios.')
+      return
+    }
+
+    setConvidadoLoading(true)
+    setConvidadoError(null)
+
+    const payload = {
+      nomeCompleto: convidadoFormData.nomeCompleto,
+      whatsapp: convidadoFormData.whatsapp.replace(/\D/g, ''),
+      dataNascimento: convidadoFormData.dataNascimento || null,
+      observacao: convidadoFormData.observacao || null,
+      cpf: null,
+      statusCadastro: 'Ativo',
+      cargoId: 4, // Visitante/Convidado
+      dataAdesao: new Date().toISOString().split('T')[0],
+      sexo: 'Masculino', // default required field or empty
+      fotoPerfilUrl: '',
+      ministeriosIds: [],
+      pequenosGruposIds: []
+    }
+
+    try {
+      const res = await fetch('/api/membros', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      if (res.ok) {
+        setShowConvidadoModal(false)
+        fetchMembers()
+      } else {
+        const problem = await res.json().catch(() => ({}))
+        setConvidadoError(problem.detail || problem.message || 'Erro ao cadastrar convidado.')
+      }
+    } catch (err) {
+      setConvidadoError('Falha ao conectar com o servidor.')
+    } finally {
+      setConvidadoLoading(false)
     }
   }
 
@@ -473,7 +533,8 @@ export default function MembrosManager() {
       cargoId: selectedMember.cargoId ? String(selectedMember.cargoId) : '',
       liderDiretoId: selectedMember.liderDiretoId ? String(selectedMember.liderDiretoId) : '',
       ministeriosIds: selectedMember.ministeriosIds || [],
-      pequenosGruposIds: selectedMember.pequenosGruposIds || []
+      pequenosGruposIds: selectedMember.pequenosGruposIds || [],
+      observacao: selectedMember.observacao || ''
     })
     setWizardCpf(selectedMember.cpf || '')
     setWizardStep(2)
@@ -500,6 +561,22 @@ export default function MembrosManager() {
           >
             <Plus className="h-4.5 w-4.5" />
             Adicionar Membro
+          </button>
+          <button
+            onClick={() => {
+              setConvidadoFormData({
+                nomeCompleto: '',
+                whatsapp: '',
+                dataNascimento: '',
+                observacao: ''
+              })
+              setConvidadoError(null)
+              setShowConvidadoModal(true)
+            }}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2 px-4 rounded-xl transition-colors shadow-sm text-sm flex-1 sm:flex-none"
+          >
+            <Plus className="h-4.5 w-4.5" />
+            Adicionar Convidado
           </button>
           <button
             onClick={() => {
@@ -918,15 +995,23 @@ export default function MembrosManager() {
                   </div>
                 </div>
               </div>
+              {selectedMember.observacao && (
+                <div className="col-span-1 md:col-span-2 space-y-2 mt-2">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">Observações</h4>
+                  <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100 whitespace-pre-wrap">
+                    {selectedMember.observacao}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-between">
-              <div>
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row justify-between gap-3 animate-in fade-in duration-200">
+              <div className="w-full sm:w-auto">
                 {selectedMember.statusCadastro?.toUpperCase() === 'ATIVO' ? (
                   <button
                     onClick={() => handleToggleStatus(selectedMember.matricula, 'Inativo')}
-                    className="flex items-center gap-1.5 bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 font-semibold text-xs px-4 py-2.5 rounded-xl transition-colors"
+                    className="w-full sm:w-auto flex items-center justify-center gap-1.5 bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 font-semibold text-xs px-4 py-2.5 rounded-xl transition-colors"
                   >
                     <UserMinus className="h-4 w-4" />
                     Inativar Cadastro
@@ -934,23 +1019,35 @@ export default function MembrosManager() {
                 ) : (
                   <button
                     onClick={() => handleToggleStatus(selectedMember.matricula, 'Ativo')}
-                    className="flex items-center gap-1.5 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 font-semibold text-xs px-4 py-2.5 rounded-xl transition-colors"
+                    className="w-full sm:w-auto flex items-center justify-center gap-1.5 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 font-semibold text-xs px-4 py-2.5 rounded-xl transition-colors"
                   >
                     <UserCheck className="h-4 w-4" />
                     Ativar Cadastro
                   </button>
                 )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                {onViewOrganograma && (
+                  <button
+                    onClick={() => {
+                      setShowDetailModal(false)
+                      onViewOrganograma({ nome: selectedMember.nomeCompleto })
+                    }}
+                    className="w-full sm:w-auto flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs px-4 py-2.5 rounded-xl transition-colors border border-slate-200"
+                  >
+                    <Users className="h-4 w-4 text-slate-500" />
+                    Ver Organograma
+                  </button>
+                )}
                 <button
                   onClick={() => setShowDetailModal(false)}
-                  className="bg-white border border-slate-200 text-slate-600 font-semibold text-xs px-4 py-2.5 rounded-xl hover:bg-slate-50 transition-colors"
+                  className="w-full sm:w-auto bg-white border border-slate-200 text-slate-600 font-semibold text-xs px-4 py-2.5 rounded-xl hover:bg-slate-50 transition-colors"
                 >
                   Fechar
                 </button>
                 <button
                   onClick={triggerEditFromDetail}
-                  className="flex items-center gap-1.5 bg-emerald-700 text-white hover:bg-emerald-800 font-semibold text-xs px-4 py-2.5 rounded-xl transition-colors shadow-sm"
+                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 bg-emerald-700 text-white hover:bg-emerald-800 font-semibold text-xs px-4 py-2.5 rounded-xl transition-colors shadow-sm"
                 >
                   <Edit className="h-4 w-4" />
                   Editar Membro
@@ -1169,8 +1266,13 @@ export default function MembrosManager() {
                           <input
                             type="text"
                             value={formData.cpf}
-                            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-slate-50 text-slate-500 cursor-not-allowed"
-                            readOnly
+                            onChange={(e) => setFormData({ ...formData, cpf: formatCPF(e.target.value) })}
+                            className={`w-full border rounded-xl px-3 py-2 text-sm transition-colors ${
+                              String(formData.cargoId) === '4'
+                                ? 'border-slate-300 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600'
+                                : 'border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed'
+                            }`}
+                            readOnly={String(formData.cargoId) !== '4'}
                           />
                         </div>
 
@@ -1215,6 +1317,18 @@ export default function MembrosManager() {
                             className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-600"
                           />
                         </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                          Observações
+                        </label>
+                        <textarea
+                          placeholder="Informações adicionais, notas ou observações sobre o membro..."
+                          value={formData.observacao || ''}
+                          onChange={(e) => setFormData({ ...formData, observacao: e.target.value })}
+                          className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 min-h-[80px]"
+                        />
                       </div>
                     </div>
                   )}
@@ -1380,26 +1494,26 @@ export default function MembrosManager() {
                 </div>
 
                 {/* Wizard Footer */}
-                <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
+                <div className="p-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row justify-between gap-3">
                   <button
                     type="button"
                     onClick={() => setWizardStep(1)}
-                    className="border border-slate-200 text-slate-600 font-semibold text-xs px-4 py-2.5 rounded-xl hover:bg-slate-50 transition-colors"
+                    className="w-full sm:w-auto border border-slate-200 text-slate-600 font-semibold text-xs px-4 py-2.5 rounded-xl hover:bg-slate-50 transition-colors text-center"
                   >
                     Voltar para CPF
                   </button>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                     <button
                       type="button"
                       onClick={() => setShowWizard(false)}
-                      className="bg-white border border-slate-200 text-slate-600 font-semibold text-xs px-4 py-2.5 rounded-xl hover:bg-slate-50 transition-colors"
+                      className="w-full sm:w-auto bg-white border border-slate-200 text-slate-600 font-semibold text-xs px-4 py-2.5 rounded-xl hover:bg-slate-50 transition-colors"
                     >
                       Fechar
                     </button>
                     <button
                       type="submit"
                       disabled={wizardLoading}
-                      className="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs px-5 py-2.5 rounded-xl transition-colors shadow-sm disabled:opacity-50 flex items-center gap-1"
+                      className="w-full sm:w-auto bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs px-5 py-2.5 rounded-xl transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-1"
                     >
                       {wizardLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                       Salvar Cadastro
@@ -1408,6 +1522,109 @@ export default function MembrosManager() {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+      {/* SIMPLIFIED CONVIDADO REGISTRATION MODAL */}
+      {showConvidadoModal && (
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto py-8 animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 animate-in zoom-in-95 duration-200 flex flex-col">
+            {/* Header */}
+            <div className="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Adicionar Convidado</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Cadastro rápido de visitante ou convidado.</p>
+              </div>
+              <button
+                onClick={() => setShowConvidadoModal(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Error Message */}
+            {convidadoError && (
+              <div className="mx-6 mt-4 bg-red-50 text-red-700 border border-red-200 p-4 rounded-xl text-xs flex gap-2 items-center">
+                <AlertCircle className="h-4.5 w-4.5 text-red-600 shrink-0" />
+                <span>{convidadoError}</span>
+              </div>
+            )}
+
+            {/* Form */}
+            <form onSubmit={handleConvidadoSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  Nome Completo *
+                </label>
+                <input
+                  type="text"
+                  placeholder="Nome do convidado..."
+                  value={convidadoFormData.nomeCompleto}
+                  onChange={(e) => setConvidadoFormData({ ...convidadoFormData, nomeCompleto: e.target.value })}
+                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  WhatsApp *
+                </label>
+                <input
+                  type="text"
+                  placeholder="(00) 00000-0000"
+                  value={convidadoFormData.whatsapp}
+                  onChange={(e) => setConvidadoFormData({ ...convidadoFormData, whatsapp: formatWhatsapp(e.target.value) })}
+                  maxLength={15}
+                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  Data de Nascimento
+                </label>
+                <input
+                  type="date"
+                  value={convidadoFormData.dataNascimento}
+                  onChange={(e) => setConvidadoFormData({ ...convidadoFormData, dataNascimento: e.target.value })}
+                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  Observação
+                </label>
+                <textarea
+                  placeholder="Notas adicionais sobre o convidado..."
+                  value={convidadoFormData.observacao}
+                  onChange={(e) => setConvidadoFormData({ ...convidadoFormData, observacao: e.target.value })}
+                  className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 min-h-[80px]"
+                />
+              </div>
+
+              {/* Footer */}
+              <div className="flex flex-col sm:flex-row gap-2 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowConvidadoModal(false)}
+                  className="w-full sm:w-auto bg-white border border-slate-200 text-slate-600 font-semibold text-xs px-4 py-2.5 rounded-xl hover:bg-slate-50 transition-colors"
+                >
+                  Fechar
+                </button>
+                <button
+                  type="submit"
+                  disabled={convidadoLoading}
+                  className="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs px-5 py-2.5 rounded-xl transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-1"
+                >
+                  {convidadoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Salvar Cadastro
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

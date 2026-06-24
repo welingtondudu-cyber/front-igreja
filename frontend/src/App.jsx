@@ -26,6 +26,7 @@ function App() {
   })
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [organogramaFilter, setOrganogramaFilter] = useState(null)
   const [step, setStep] = useState(1) // 1: Login, 2: Ballot, 3: Success
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -285,9 +286,24 @@ function App() {
       case 'estudos':
         return renderEstudos()
       case 'membros':
-        return <MembrosManager />
+        return (
+          <MembrosManager
+            onViewOrganograma={(filter) => {
+              setOrganogramaFilter(filter)
+              navigateTo('organograma')
+            }}
+          />
+        )
       case 'organograma':
-        return <OrganogramaView onBack={() => navigateTo('membros')} />
+        return (
+          <OrganogramaView
+            preFilter={organogramaFilter}
+            onBack={() => {
+              setOrganogramaFilter(null)
+              navigateTo('membros')
+            }}
+          />
+        )
       case 'restricoes':
         return <RestricoesManager onClose={() => navigateTo('apuracao')} />
       case 'apuracao':

@@ -16,6 +16,7 @@ public record MembroFormDTO(
         Long cargoId,
         Long liderDiretoId,
         java.util.List<Long> ministeriosIds,
-        java.util.List<Long> pequenosGruposIds
+        java.util.List<Long> pequenosGruposIds,
+        String observacao
 ) {
 }

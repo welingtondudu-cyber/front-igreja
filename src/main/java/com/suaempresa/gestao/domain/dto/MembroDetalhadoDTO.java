@@ -25,7 +25,8 @@ public record MembroDetalhadoDTO(
         Long cargoId,
         Long liderDiretoId,
         List<Long> ministeriosIds,
-        List<Long> pequenosGruposIds) {
+        List<Long> pequenosGruposIds,
+        String observacao) {
     public static MembroDetalhadoDTO fromEntity(Membro m) {
         List<String> ministerios = new ArrayList<>();
         List<String> pequenosGrupos = new ArrayList<>();
@@ -64,6 +65,7 @@ public record MembroDetalhadoDTO(
                 m.getCargo() != null ? m.getCargo().getId() : null,
                 m.getLiderDireto() != null ? m.getLiderDireto().getId() : null,
                 ministeriosIds,
-                pequenosGruposIds);
+                pequenosGruposIds,
+                m.getObservacao());
     }
 }

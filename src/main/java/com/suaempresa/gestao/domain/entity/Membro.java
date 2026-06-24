@@ -41,6 +41,9 @@ public class Membro {
     @Column(name = "cpf", unique = true)
     private String cpf;
 
+    @Column(name = "observacao", length = 1000)
+    private String observacao;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cargo_id")
     private Cargo cargo;
