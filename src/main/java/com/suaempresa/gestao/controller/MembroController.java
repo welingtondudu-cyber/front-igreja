@@ -104,9 +104,29 @@ public class MembroController {
     }
 
     @GetMapping(value = "/exportar/csv", produces = "text/csv;charset=UTF-8")
-    @Operation(summary = "Exportar membros para CSV", description = "Gera e exporta um arquivo CSV codificado em UTF-8 com BOM contendo todos os membros cadastrados.")
-    public ResponseEntity<byte[]> exportarCsv() {
-        byte[] csvData = membroService.exportarCsv();
+    @Operation(summary = "Exportar membros para CSV", description = "Gera e exporta um arquivo CSV codificado em UTF-8 com BOM contendo os membros filtrados pelos parâmetros de busca.")
+    public ResponseEntity<byte[]> exportarCsv(
+            @Parameter(description = "Filtro por parte do nome completo (busca case-insensitive)")
+            @RequestParam(required = false) String nome,
+            @Parameter(description = "Filtro por CPF (parcial ou completo, ignora caracteres não numéricos)")
+            @RequestParam(required = false) String cpf,
+            @Parameter(description = "Filtro por ID do cargo")
+            @RequestParam(required = false) Long cargoId,
+            @Parameter(description = "Filtro por parte do título do cargo")
+            @RequestParam(required = false) String tituloCargo,
+            @Parameter(description = "Filtro por status do cadastro (ex: ATIVO, INATIVO)")
+            @RequestParam(required = false) String statusCadastro,
+            @Parameter(description = "Filtro por ID do líder direto")
+            @RequestParam(required = false) Long liderDiretoId,
+            @Parameter(description = "Filtro por data de nascimento inicial (período - yyyy-MM-dd)")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate nascimentoDe,
+            @Parameter(description = "Filtro por data de nascimento final (período - yyyy-MM-dd)")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate nascimentoAte
+    ) {
+        byte[] csvData = membroService.exportarCsv(
+                nome, cpf, cargoId, tituloCargo, statusCadastro,
+                liderDiretoId, nascimentoDe, nascimentoAte
+        );
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType("text/csv;charset=UTF-8"));

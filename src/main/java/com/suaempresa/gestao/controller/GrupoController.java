@@ -5,6 +5,9 @@ import com.suaempresa.gestao.domain.dto.GrupoFormDTO;
 import com.suaempresa.gestao.domain.dto.MembroGrupoDTO;
 import com.suaempresa.gestao.domain.entity.TipoGrupo;
 import com.suaempresa.gestao.service.GrupoService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -16,40 +19,61 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/grupos")
 @RequiredArgsConstructor
+@Tag(name = "Grupos", description = "API para gestão e vinculação de grupos da igreja (ex: Ministérios, Pequenos Grupos)")
 public class GrupoController {
 
     private final GrupoService grupoService;
 
     @GetMapping
-    public ResponseEntity<List<GrupoDTO>> listarGrupos(@RequestParam(value = "tipo", required = false) TipoGrupo tipo) {
+    @Operation(summary = "Listar grupos", description = "Retorna todos os grupos cadastrados, com opção de filtrar por tipo de grupo.")
+    public ResponseEntity<List<GrupoDTO>> listarGrupos(
+            @Parameter(description = "Tipo de grupo para filtro (ex: MINISTERIO, PEQUENO_GRUPO)")
+            @RequestParam(value = "tipo", required = false) TipoGrupo tipo
+    ) {
         return ResponseEntity.ok(grupoService.listarGrupos(tipo));
     }
 
     @PostMapping
+    @Operation(summary = "Criar novo grupo", description = "Cadastra um novo grupo com nome, tipo opcional e descrição.")
     public ResponseEntity<GrupoDTO> criarGrupo(@RequestBody @Valid GrupoFormDTO dto) {
         GrupoDTO criado = grupoService.criarGrupo(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(criado);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<GrupoDTO> atualizarGrupo(@PathVariable Long id, @RequestBody @Valid GrupoFormDTO dto) {
+    @Operation(summary = "Atualizar grupo", description = "Atualiza os dados de um grupo existente pelo seu ID.")
+    public ResponseEntity<GrupoDTO> atualizarGrupo(
+            @Parameter(description = "ID do grupo a ser atualizado", required = true) @PathVariable Long id,
+            @RequestBody @Valid GrupoFormDTO dto
+    ) {
         return ResponseEntity.ok(grupoService.atualizarGrupo(id, dto));
     }
 
     @PostMapping("/{grupoId}/membros/{membroId}")
-    public ResponseEntity<Void> vincularMembro(@PathVariable Long grupoId, @PathVariable Long membroId) {
+    @Operation(summary = "Vincular membro ao grupo", description = "Adiciona a associação entre um membro e um grupo.")
+    public ResponseEntity<Void> vincularMembro(
+            @Parameter(description = "ID do grupo", required = true) @PathVariable Long grupoId,
+            @Parameter(description = "ID do membro a ser vinculado", required = true) @PathVariable Long membroId
+    ) {
         grupoService.vincularMembro(grupoId, membroId);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @DeleteMapping("/{grupoId}/membros/{membroId}")
-    public ResponseEntity<Void> desvincularMembro(@PathVariable Long grupoId, @PathVariable Long membroId) {
+    @Operation(summary = "Desvincular membro do grupo", description = "Remove a associação entre um membro e um grupo.")
+    public ResponseEntity<Void> desvincularMembro(
+            @Parameter(description = "ID do grupo", required = true) @PathVariable Long grupoId,
+            @Parameter(description = "ID do membro a ser desvinculado", required = true) @PathVariable Long membroId
+    ) {
         grupoService.desvincularMembro(grupoId, membroId);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/membros/{membroId}")
-    public ResponseEntity<List<MembroGrupoDTO>> listarGruposDoMembro(@PathVariable Long membroId) {
+    @Operation(summary = "Listar grupos do membro", description = "Retorna todos os grupos aos quais um membro específico está vinculado.")
+    public ResponseEntity<List<MembroGrupoDTO>> listarGruposDoMembro(
+            @Parameter(description = "ID do membro", required = true) @PathVariable Long membroId
+    ) {
         return ResponseEntity.ok(grupoService.listarGruposDoMembro(membroId));
     }
 }

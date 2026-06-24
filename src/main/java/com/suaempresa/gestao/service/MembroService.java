@@ -117,8 +117,21 @@ public class MembroService {
     // ─── EXPORTAR CSV (UTF-8 com BOM para Excel) ───────────────────────────────
 
     @Transactional(readOnly = true)
-    public byte[] exportarCsv() {
-        List<Membro> membros = membroRepository.findAllWithCargo();
+    public byte[] exportarCsv(
+            String nome,
+            String cpf,
+            Long cargoId,
+            String tituloCargo,
+            String statusCadastro,
+            Long liderDiretoId,
+            LocalDate nascimentoDe,
+            LocalDate nascimentoAte
+    ) {
+        Specification<Membro> spec = MembroSpecification.comFiltros(
+                nome, cpf, cargoId, tituloCargo, statusCadastro, liderDiretoId,
+                nascimentoDe, nascimentoAte
+        );
+        List<Membro> membros = membroRepository.findAll(spec);
         StringBuilder csv = new StringBuilder();
 
         // Cabeçalho
