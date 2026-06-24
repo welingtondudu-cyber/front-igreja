@@ -1,4 +1,4 @@
-package com.suaempresa.gestao;
+package com.suaempresa.gestao.config;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;

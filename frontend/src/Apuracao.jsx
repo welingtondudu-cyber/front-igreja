@@ -156,7 +156,7 @@ function Apuracao({ onBackToVote }) {
           />
         </div>
         <div className="text-xs font-semibold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-full uppercase tracking-wider">
-          Painel Administrativo
+          Apuração Eleição
         </div>
       </header>
 
