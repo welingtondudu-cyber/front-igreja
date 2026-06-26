@@ -27,6 +27,7 @@ function App() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [organogramaFilter, setOrganogramaFilter] = useState(null)
+  const [membrosInitialMatricula, setMembrosInitialMatricula] = useState(null)
   const [step, setStep] = useState(1) // 1: Login, 2: Ballot, 3: Success
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -288,6 +289,8 @@ function App() {
       case 'membros':
         return (
           <MembrosManager
+            initialMemberMatricula={membrosInitialMatricula}
+            onCloseInitialMember={() => setMembrosInitialMatricula(null)}
             onViewOrganograma={(filter) => {
               setOrganogramaFilter(filter)
               navigateTo('organograma')
@@ -300,6 +303,10 @@ function App() {
             preFilter={organogramaFilter}
             onBack={() => {
               setOrganogramaFilter(null)
+              navigateTo('membros')
+            }}
+            onViewMemberDetails={(matricula) => {
+              setMembrosInitialMatricula(matricula)
               navigateTo('membros')
             }}
           />

@@ -4,7 +4,7 @@ import {
   AlertCircle, Shield, Award, HelpCircle, ChevronLeft
 } from 'lucide-react'
 
-export default function OrganogramaView({ preFilter, onBack }) {
+export default function OrganogramaView({ preFilter, onBack, onViewMemberDetails }) {
   const [treeData, setTreeData] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -332,8 +332,8 @@ export default function OrganogramaView({ preFilter, onBack }) {
             )}
 
             {/* 2. FOCAL NODE (PESSOA EM DESTAQUE) */}
-            <div className="flex flex-col items-center w-full max-w-md animate-in zoom-in-95 duration-300 relative z-10">
-              <div className="w-full bg-white border-2 border-emerald-500 rounded-2xl p-5 shadow-lg relative overflow-hidden text-center">
+            <div className="flex flex-col items-center w-full animate-in zoom-in-95 duration-300 relative z-10">
+              <div className="w-64 sm:w-72 bg-white border-2 border-emerald-500 rounded-2xl p-4 shadow-lg relative overflow-hidden text-center">
                 {/* Visual accent top bar */}
                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500" />
                 
@@ -341,7 +341,7 @@ export default function OrganogramaView({ preFilter, onBack }) {
                 {ancestors.length > 0 && (
                   <button
                     onClick={() => setFocalMatricula(treeData[0].matricula)}
-                    className="absolute top-3 right-3 text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold px-2 py-1 rounded-lg transition-colors border border-slate-200"
+                    className="absolute top-3 right-3 text-[9px] bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold px-2 py-0.5 rounded transition-colors border border-slate-200"
                     title="Voltar para a liderança do topo"
                   >
                     Topo
@@ -353,43 +353,49 @@ export default function OrganogramaView({ preFilter, onBack }) {
                   {focalNode.fotoPerfilUrl ? (
                     <img
                       src={focalNode.fotoPerfilUrl}
-                      className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm ring-4 ring-emerald-500/10"
+                      className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-sm ring-4 ring-emerald-500/10"
                     />
                   ) : (
-                    <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-700 font-extrabold text-lg flex items-center justify-center border-2 border-white shadow-sm ring-4 ring-emerald-500/10">
+                    <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-700 font-extrabold text-base flex items-center justify-center border-2 border-white shadow-sm ring-4 ring-emerald-500/10">
                       {getInitials(focalNode.nomeCompleto)}
                     </div>
                   )}
                 </div>
 
                 {/* Name and Role */}
-                <h3 className="font-extrabold text-slate-800 text-base leading-tight truncate px-2" title={focalNode.nomeCompleto}>
+                <h3 className="font-extrabold text-slate-800 text-sm leading-tight truncate px-1" title={focalNode.nomeCompleto}>
                   {focalNode.nomeCompleto}
                 </h3>
-                <span className="inline-block px-2.5 py-0.5 mt-2 bg-emerald-50 text-emerald-800 border border-emerald-200/50 rounded-full text-[10px] font-bold uppercase tracking-wide">
+                <span className="inline-block px-2.5 py-0.5 mt-2 bg-emerald-50 text-emerald-800 border border-emerald-200/50 rounded-full text-[9px] font-bold uppercase tracking-wide">
                   {focalNode.tituloCargo || 'Membro'}
                 </span>
 
-                <div className="mt-2 text-[10px] text-slate-400 font-mono">
+                <div className="mt-2 text-[9px] text-slate-400 font-mono">
                   Matrícula: {String(focalNode.matricula).padStart(4, '0')}
                 </div>
 
                 {/* Contact options */}
-                <div className="flex items-center gap-2 mt-5">
-                  {focalNode.whatsapp ? (
+                <div className="flex flex-col gap-2 mt-4 w-full">
+                  {focalNode.whatsapp && (
                     <a
                       href={`https://wa.me/55${focalNode.whatsapp.replace(/\D/g, '')}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm hover:shadow hover:-translate-y-0.5 duration-200"
+                      className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm hover:shadow hover:-translate-y-0.5 duration-200"
                     >
                       <Phone className="h-3.5 w-3.5" />
                       Falar no WhatsApp
                     </a>
-                  ) : (
-                    <div className="flex-1 py-2 text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-xl font-medium">
-                      Sem telefone cadastrado
-                    </div>
+                  )}
+
+                  {onViewMemberDetails && (
+                    <button
+                      onClick={() => onViewMemberDetails(focalNode.matricula)}
+                      className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-sm hover:shadow hover:-translate-y-0.5 duration-200"
+                    >
+                      <Users className="h-3.5 w-3.5 text-slate-500" />
+                      Ver Cadastro do Membro
+                    </button>
                   )}
                 </div>
               </div>
@@ -400,8 +406,8 @@ export default function OrganogramaView({ preFilter, onBack }) {
               {focalNode.liderados && focalNode.liderados.length > 0 ? (
                 <div className="w-full space-y-4 pt-4 animate-in fade-in duration-300">
                   <div className="w-full text-center border-t border-slate-200 pt-6">
-                    <h4 className="font-bold text-slate-700 text-sm">
-                      Membros que se reportam a {focalNode.nomeCompleto.split(' ')[0]} ({focalNode.liderados.length})
+                    <h4 className="font-bold text-slate-700 text-xs">
+                      Membros sob a coordenação ou liderança de {focalNode.nomeCompleto.split(' ')[0]} ({focalNode.liderados.length})
                     </h4>
                   </div>
                   
@@ -446,11 +452,11 @@ export default function OrganogramaView({ preFilter, onBack }) {
                   </div>
                 </div>
               ) : (
-                <div className="w-full max-w-md pt-6">
+                <div className="w-full max-w-sm pt-6">
                   <div className="text-center py-6 bg-white border border-dashed border-slate-200 rounded-2xl shadow-sm">
                     <Award className="h-6 w-6 text-slate-300 mx-auto mb-2" />
-                    <p className="text-xs font-semibold text-slate-500">Este membro não possui liderados directos</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Nenhum outro membro se reporta a ele na hierarquia.</p>
+                    <p className="text-xs font-semibold text-slate-500">Este membro não possui liderados diretos nesta estrutura</p>
+                    <p className="text-[10px] text-slate-400 mt-1 px-4 leading-normal">Não há outros membros vinculados sob a coordenação ou mentoria direta desta pessoa.</p>
                   </div>
                 </div>
               )}

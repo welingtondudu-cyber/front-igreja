@@ -12,7 +12,7 @@ const WhatsAppIcon = (props) => (
   </svg>
 )
 
-export default function MembrosManager({ onViewOrganograma }) {
+export default function MembrosManager({ onViewOrganograma, initialMemberMatricula, onCloseInitialMember }) {
   // Members List State
   const [members, setMembers] = useState([])
   const [totalPages, setTotalPages] = useState(0)
@@ -96,6 +96,32 @@ export default function MembrosManager({ onViewOrganograma }) {
   useEffect(() => {
     fetchMembers()
   }, [currentPage, filterGrupoId, filterLiderId, filterStatus, filterCargoId])
+
+  // Se recebermos uma matricula inicial (vindo do Organograma), carrega o detalhe do membro
+  useEffect(() => {
+    if (initialMemberMatricula) {
+      const fetchInitialMember = async () => {
+        try {
+          const res = await fetch(`/api/membros/${initialMemberMatricula}`)
+          if (res.ok) {
+            const data = await res.json()
+            setSelectedMember(data)
+            setShowDetailModal(true)
+          }
+        } catch (err) {
+          console.error('Erro ao carregar detalhes do membro inicial:', err)
+        }
+      }
+      fetchInitialMember()
+    }
+  }, [initialMemberMatricula])
+
+  // Limpa a matricula inicial no componente pai ao fechar a modal de detalhes
+  useEffect(() => {
+    if (!showDetailModal && onCloseInitialMember) {
+      onCloseInitialMember()
+    }
+  }, [showDetailModal, onCloseInitialMember])
 
   const fetchGrupos = async () => {
     try {
