@@ -337,17 +337,6 @@ export default function OrganogramaView({ preFilter, onBack, onViewMemberDetails
                 {/* Visual accent top bar */}
                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500" />
                 
-                {/* Go to main root helper if nested */}
-                {ancestors.length > 0 && (
-                  <button
-                    onClick={() => setFocalMatricula(treeData[0].matricula)}
-                    className="absolute top-3 right-3 text-[9px] bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold px-2 py-0.5 rounded transition-colors border border-slate-200"
-                    title="Voltar para a liderança do topo"
-                  >
-                    Topo
-                  </button>
-                )}
-
                 {/* Avatar */}
                 <div className="flex justify-center mb-3">
                   {focalNode.fotoPerfilUrl ? (
