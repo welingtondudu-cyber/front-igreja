@@ -192,7 +192,7 @@ export default function OrganogramaView({ preFilter, onBack }) {
             // Depth 0 (Root) -> Level 1 children are placed side-by-side horizontally
             <div className="flex flex-col items-center">
               <div className="w-[2px] h-8 bg-emerald-500/20" />
-              <div className="relative flex flex-row gap-8 justify-center items-start pt-4">
+              <div className="relative flex flex-row flex-wrap gap-x-8 gap-y-12 justify-center items-start pt-4">
                 {node.liderados.length > 1 && (
                   <div className="absolute top-0 left-[150px] right-[150px] h-[2px] bg-emerald-500/20" />
                 )}
@@ -307,7 +307,7 @@ export default function OrganogramaView({ preFilter, onBack }) {
         ) : (
           <div className="space-y-6">
             {/* Desktop Hybrid Tree Chart */}
-            <div className="hidden md:flex flex-col items-center justify-center p-4 min-w-[900px] overflow-visible">
+            <div className="hidden md:flex flex-col items-center justify-center p-4 w-full overflow-visible">
               {treeData.map((root) => renderNodeDesktop(root))}
             </div>
 
