@@ -13,11 +13,8 @@ RUN npm run build
 # ─── STAGE 2: Servir com Nginx ─────────────────────────────────────────────────
 FROM nginx:alpine
 
-# Remove config padrão do nginx
-RUN rm /etc/nginx/conf.d/default.conf
-
-# Copia configuração customizada (caminho relativo à raiz do repositório)
-COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+# Copia configuração customizada como template (o Nginx injetará as variáveis de ambiente)
+COPY frontend/nginx.conf.template /etc/nginx/templates/default.conf.template
 
 # Copia os arquivos buildados
 COPY --from=builder /app/dist /usr/share/nginx/html
