@@ -4,20 +4,21 @@ import {
   ShieldCheck, LogOut, Users, Award, ShieldAlert, CalendarRange,
   DollarSign, Vote, ArrowRight, Settings, LayoutDashboard, UserCheck,
   Newspaper, Calendar, PieChart, BarChart3, ListFilter, BookOpen, AlertTriangle,
-  ChevronLeft, PlayCircle
+  ChevronLeft, PlayCircle, Lock, FileText
 } from 'lucide-react'
 import Apuracao from './Apuracao'
 import CadastroEleicao from './CadastroEleicao'
 import MembrosManager from './MembrosManager'
 import OrganogramaView from './OrganogramaView'
 import RestricoesManager from './RestricoesManager'
+import FinanceiroManager from './FinanceiroManager'
 
 function App() {
   // Navigation & View States
   const [currentView, setCurrentView] = useState(() => {
     const params = new URLSearchParams(window.location.search)
     const view = params.get('view')
-    if (view && ['feed', 'calendario', 'membros', 'organograma', 'restricoes', 'apuracao', 'cadastro', 'dashboards', 'analitico'].includes(view)) {
+    if (view && ['feed', 'calendario', 'membros', 'organograma', 'restricoes', 'apuracao', 'cadastro', 'dashboards', 'analitico', 'fechamentos', 'financeiro-relatorios'].includes(view)) {
       return view
     }
     if (window.location.pathname === '/apuracao') return 'apuracao'
@@ -318,9 +319,13 @@ function App() {
       case 'cadastro':
         return <CadastroEleicao onBack={() => navigateTo('apuracao')} />
       case 'dashboards':
-        return renderFinanceiroDashboards()
+        return <FinanceiroManager initialTab="dashboard" />
       case 'analitico':
-        return renderFinanceiroAnalitico()
+        return <FinanceiroManager initialTab="extrato" />
+      case 'fechamentos':
+        return <FinanceiroManager initialTab="extrato" />
+      case 'financeiro-relatorios':
+        return <FinanceiroManager initialTab="extrato" />
       case 'voting':
         return renderUrna()
       default:
@@ -488,321 +493,6 @@ function App() {
   }
 
   // 3. HIGH FIDELITY FINANCEIRO DASHBOARDS
-  const renderFinanceiroDashboards = () => {
-    return (
-      <div className="space-y-6">
-        {/* BREADCRUMB */}
-        <div className="flex items-center gap-3 mb-2 animate-in fade-in duration-200">
-          <button 
-            onClick={() => navigateTo('analitico')}
-            className="p-2 hover:bg-slate-200 rounded-xl transition-colors text-slate-600 focus:outline-none border border-slate-200 bg-white"
-            title="Voltar"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <div className="text-sm font-semibold text-slate-500">
-            Grupo Financeiro / <span className="text-slate-800 font-bold">Dashboards</span>
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 border border-slate-200 rounded-2xl shadow-sm">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Dashboard Financeiro</h1>
-            <p className="text-sm text-slate-500 mt-1">Acompanhamento consolidado de dízimos, ofertas e despesas da igreja.</p>
-          </div>
-          <div className="flex items-center gap-2 bg-emerald-50 text-emerald-800 px-3.5 py-2 rounded-xl border border-emerald-100 text-xs font-semibold">
-            <PieChart className="h-4.5 w-4.5 text-emerald-700" />
-            Consolidação Junho 2026
-          </div>
-        </div>
-
-        {/* Indicators */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Receita Operacional</span>
-            <span className="text-2xl font-bold text-slate-800 block mt-1">R$ 45.230,00</span>
-            <span className="text-xs text-emerald-600 font-semibold mt-1 block">▲ +12% vs mês anterior</span>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Despesas Consolidadas</span>
-            <span className="text-2xl font-bold text-slate-800 block mt-1">R$ 31.840,00</span>
-            <span className="text-xs text-red-500 font-semibold mt-1 block">▼ -4% vs mês anterior</span>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Saldo do Mês</span>
-            <span className="text-2xl font-bold text-emerald-800 block mt-1">R$ 13.390,00</span>
-            <span className="text-xs text-slate-400 font-medium mt-1 block">Aporte em poupança</span>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Dizimistas Ativos</span>
-            <span className="text-2xl font-bold text-emerald-800 block mt-1">78%</span>
-            <span className="text-xs text-emerald-600 font-semibold mt-1 block">▲ +3% vs mês anterior</span>
-          </div>
-        </div>
-
-        {/* Charts & Graphs mockup */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Histórico de Entradas vs Saídas</h3>
-              <BarChart3 className="h-4 w-4 text-emerald-700" />
-            </div>
-            
-            {/* Visual HTML vertical bar chart with axis labels and grid lines */}
-            <div className="flex gap-4 pt-4">
-              {/* Y-Axis Labels */}
-              <div className="flex flex-col justify-between text-[10px] text-slate-400 h-44 pb-6 select-none font-mono">
-                <span>R$ 50k</span>
-                <span>R$ 37.5k</span>
-                <span>R$ 25k</span>
-                <span>R$ 12.5k</span>
-                <span>R$ 0</span>
-              </div>
-              
-              {/* Grid & Bars Container */}
-              <div className="flex-grow relative h-44 border-b border-l border-slate-200">
-                {/* Horizontal Gridlines */}
-                <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-                  <div className="w-full border-t border-slate-100"></div>
-                  <div className="w-full border-t border-slate-100"></div>
-                  <div className="w-full border-t border-slate-100"></div>
-                  <div className="w-full border-t border-slate-100"></div>
-                  <div className="w-full"></div> {/* Bottom line */}
-                </div>
-                
-                {/* Bars */}
-                <div className="absolute inset-0 flex items-end justify-around px-2">
-                  {/* Março */}
-                  <div className="flex flex-col items-center gap-1.5 w-1/5 group/bar relative">
-                    <div className="flex items-end gap-1 sm:gap-1.5 h-32">
-                      <div className="bg-emerald-600 w-3 sm:w-5 rounded-t transition-all hover:bg-emerald-500 relative group/val" style={{ height: '76%' }}>
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] font-mono py-0.5 px-1.5 rounded opacity-0 group-hover/val:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-sm z-20">
-                          R$ 38.000
-                        </div>
-                      </div>
-                      <div className="bg-amber-500 w-3 sm:w-5 rounded-t transition-all hover:bg-amber-400 relative group/val" style={{ height: '67%' }}>
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] font-mono py-0.5 px-1.5 rounded opacity-0 group-hover/val:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-sm z-20">
-                          R$ 33.600
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-semibold text-slate-500 mt-1">Março</span>
-                  </div>
-                  
-                  {/* Abril */}
-                  <div className="flex flex-col items-center gap-1.5 w-1/5 group/bar relative">
-                    <div className="flex items-end gap-1 sm:gap-1.5 h-32">
-                      <div className="bg-emerald-600 w-3 sm:w-5 rounded-t transition-all hover:bg-emerald-500 relative group/val" style={{ height: '84%' }}>
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] font-mono py-0.5 px-1.5 rounded opacity-0 group-hover/val:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-sm z-20">
-                          R$ 42.000
-                        </div>
-                      </div>
-                      <div className="bg-amber-500 w-3 sm:w-5 rounded-t transition-all hover:bg-amber-400 relative group/val" style={{ height: '71%' }}>
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] font-mono py-0.5 px-1.5 rounded opacity-0 group-hover/val:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-sm z-20">
-                          R$ 35.700
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-semibold text-slate-500 mt-1">Abril</span>
-                  </div>
-                  
-                  {/* Maio */}
-                  <div className="flex flex-col items-center gap-1.5 w-1/5 group/bar relative">
-                    <div className="flex items-end gap-1 sm:gap-1.5 h-32">
-                      <div className="bg-emerald-600 w-3 sm:w-5 rounded-t transition-all hover:bg-emerald-500 relative group/val" style={{ height: '81%' }}>
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] font-mono py-0.5 px-1.5 rounded opacity-0 group-hover/val:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-sm z-20">
-                          R$ 40.500
-                        </div>
-                      </div>
-                      <div className="bg-amber-500 w-3 sm:w-5 rounded-t transition-all hover:bg-amber-400 relative group/val" style={{ height: '66%' }}>
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] font-mono py-0.5 px-1.5 rounded opacity-0 group-hover/val:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-sm z-20">
-                          R$ 33.100
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-semibold text-slate-500 mt-1">Maio</span>
-                  </div>
-                  
-                  {/* Junho */}
-                  <div className="flex flex-col items-center gap-1.5 w-1/5 group/bar relative">
-                    <div className="flex items-end gap-1 sm:gap-1.5 h-32">
-                      <div className="bg-emerald-700 w-3 sm:w-5 rounded-t transition-all hover:bg-emerald-600 relative group/val" style={{ height: '90%' }}>
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] font-mono py-0.5 px-1.5 rounded opacity-0 group-hover/val:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-sm z-20">
-                          R$ 45.230
-                        </div>
-                      </div>
-                      <div className="bg-amber-600 w-3 sm:w-5 rounded-t transition-all hover:bg-amber-500 relative group/val" style={{ height: '64%' }}>
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] font-mono py-0.5 px-1.5 rounded opacity-0 group-hover/val:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-sm z-20">
-                          R$ 31.840
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold text-slate-800 mt-1">Junho</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-center gap-4 text-xs font-semibold pt-2">
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 bg-emerald-700 rounded"></div>
-                <span className="text-slate-600">Entradas</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 bg-amber-600 rounded"></div>
-                <span className="text-slate-600">Saídas</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="lg:col-span-1 bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2">Origem das Entradas</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-semibold text-slate-600">Dízimos</span>
-                <span className="font-bold text-slate-800">65%</span>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-2">
-                <div className="bg-emerald-700 h-2 rounded-full" style={{ width: '65%' }}></div>
-              </div>
-              
-              <div className="flex justify-between items-center text-xs pt-1">
-                <span className="font-semibold text-slate-600">Ofertas Voluntárias</span>
-                <span className="font-bold text-slate-800">20%</span>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-2">
-                <div className="bg-emerald-600 h-2 rounded-full" style={{ width: '20%' }}></div>
-              </div>
-
-              <div className="flex justify-between items-center text-xs pt-1">
-                <span className="font-semibold text-slate-600">Ofertas Especiais</span>
-                <span className="font-bold text-slate-800">10%</span>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-2">
-                <div className="bg-teal-600 h-2 rounded-full" style={{ width: '10%' }}></div>
-              </div>
-
-              <div className="flex justify-between items-center text-xs pt-1">
-                <span className="font-semibold text-slate-600">Outras Receitas</span>
-                <span className="font-bold text-slate-800">5%</span>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-2">
-                <div className="bg-slate-400 h-2 rounded-full" style={{ width: '5%' }}></div>
-              </div>
-            </div>
-          </div>
-
-          <div className="lg:col-span-1 bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2">Destinação das Saídas</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-semibold text-slate-600">Aluguel e Manutenção</span>
-                <span className="font-bold text-slate-800">40%</span>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-2">
-                <div className="bg-emerald-700 h-2 rounded-full" style={{ width: '40%' }}></div>
-              </div>
-              
-              <div className="flex justify-between items-center text-xs pt-1">
-                <span className="font-semibold text-slate-600">Missões e Ação Social</span>
-                <span className="font-bold text-slate-800">30%</span>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-2">
-                <div className="bg-emerald-600 h-2 rounded-full" style={{ width: '30%' }}></div>
-              </div>
-
-              <div className="flex justify-between items-center text-xs pt-1">
-                <span className="font-semibold text-slate-600">Congregações e Educação</span>
-                <span className="font-bold text-slate-800">20%</span>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-2">
-                <div className="bg-teal-600 h-2 rounded-full" style={{ width: '20%' }}></div>
-              </div>
-
-              <div className="flex justify-between items-center text-xs pt-1">
-                <span className="font-semibold text-slate-600">Eventos e Festividades</span>
-                <span className="font-bold text-slate-800">10%</span>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-2">
-                <div className="bg-slate-400 h-2 rounded-full" style={{ width: '10%' }}></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // 4. HIGH FIDELITY FINANCEIRO ANALITICO VIEW
-  const renderFinanceiroAnalitico = () => {
-    const rows = [
-      { date: "22/06", desc: "Dízimo Consolidado Culto Manhã", cat: "Dízimo", type: "Entrada", val: "R$ 4.500,00", status: "Conciliado" },
-      { date: "21/06", desc: "Manutenção Ar Condicionado Central", cat: "Manutenção", type: "Saída", val: "R$ 1.200,00", status: "Conciliado" },
-      { date: "18/06", desc: "Oferta Missionária Especial", cat: "Oferta", type: "Entrada", val: "R$ 2.450,00", status: "Conciliado" },
-      { date: "15/06", desc: "Pagamento Conta Energia (Neoenergia)", cat: "Utilidades", type: "Saída", val: "R$ 870,00", status: "Pendente" },
-      { date: "10/06", desc: "Ajuda de Custo Missionário Sustentado", cat: "Missões", type: "Saída", val: "R$ 3.000,00", status: "Conciliado" }
-    ]
-
-    return (
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 border border-slate-200 rounded-2xl shadow-sm">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Extrato Analítico</h1>
-            <p className="text-sm text-slate-500 mt-1">Listagem detalhada das transações financeiras consolidadas.</p>
-          </div>
-          <div className="flex items-center gap-2 bg-emerald-50 text-emerald-800 px-3.5 py-2 rounded-xl border border-emerald-100 text-xs font-semibold">
-            <ListFilter className="h-4.5 w-4.5 text-emerald-700" />
-            Extrato de Junho
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 text-slate-400 text-xs font-semibold uppercase tracking-wider border-b border-slate-100">
-                  <th className="px-6 py-4">Data</th>
-                  <th className="px-6 py-4">Descrição</th>
-                  <th className="px-6 py-4">Categoria</th>
-                  <th className="px-6 py-4">Tipo</th>
-                  <th className="px-6 py-4">Valor</th>
-                  <th className="px-6 py-4 text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
-                {rows.map((row, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-6 py-4 font-semibold text-slate-500">{row.date}</td>
-                    <td className="px-6 py-4 font-bold text-slate-800">{row.desc}</td>
-                    <td className="px-6 py-4">
-                      <span className="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full text-xs font-semibold">
-                        {row.cat}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`font-semibold ${row.type === 'Entrada' ? 'text-emerald-700' : 'text-amber-600'}`}>
-                        {row.type}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-mono font-bold">{row.val}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex justify-center">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                          row.status === 'Conciliado' ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'
-                        }`}>
-                          {row.status}
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   // 5. HIGH FIDELITY BIBLE STUDIES VIEW
   const renderEstudos = () => {
     const studies = [
@@ -1309,7 +999,7 @@ function App() {
               }`}
             >
               <PieChart className="h-5 w-5 text-emerald-700" />
-              Dashboards
+              Dashboards Financeiros
             </button>
             <button
               onClick={() => navigateTo('analitico')}
@@ -1318,7 +1008,7 @@ function App() {
               }`}
             >
               <DollarSign className="h-5 w-5 text-emerald-700" />
-              Analítico
+              Analítico Financeiro
             </button>
           </div>
         </div>

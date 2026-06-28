@@ -60,6 +60,16 @@ public class GlobalExceptionHandler {
         return buildProblemDetail(HttpStatus.BAD_REQUEST, "Votação Inativa", ex.getMessage());
     }
 
+    @ExceptionHandler(CompetenciaBloqueadaException.class)
+    public ResponseEntity<ProblemDetail> handleCompetenciaBloqueada(CompetenciaBloqueadaException ex) {
+        return buildProblemDetail(HttpStatus.BAD_REQUEST, "Competência Bloqueada", ex.getMessage());
+    }
+
+    @ExceptionHandler(ArquivoDuplicadoException.class)
+    public ResponseEntity<ProblemDetail> handleArquivoDuplicado(ArquivoDuplicadoException ex) {
+        return buildProblemDetail(HttpStatus.BAD_REQUEST, "Arquivo Duplicado", ex.getMessage());
+    }
+
     private ResponseEntity<ProblemDetail> buildProblemDetail(HttpStatus status, String title, String detail) {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(status, detail);
         problemDetail.setTitle(title);

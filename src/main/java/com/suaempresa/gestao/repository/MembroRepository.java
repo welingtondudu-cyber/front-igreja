@@ -42,6 +42,8 @@ public interface MembroRepository extends JpaRepository<Membro, Long>, JpaSpecif
 
     Optional<Membro> findByCpf(String cpf);
 
+    long countByStatusCadastroIgnoreCase(String statusCadastro);
+
     @Query("SELECT COUNT(m) FROM Membro m " +
            "WHERE LOWER(m.statusCadastro) = 'ativo' " +
            "AND (m.cargo IS NULL OR (m.cargo.pesoHierarquico <> 4 AND m.cargo.titulo <> 'Visitante')) " +
