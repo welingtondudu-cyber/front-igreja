@@ -7,7 +7,7 @@ import {
   History
 } from 'lucide-react'
 
-export default function FinanceiroManager({ initialTab }) {
+export default function FinanceiroManager({ initialTab, navigateTo }) {
   // Navigation tabs: 'dashboard' | 'extrato' (which represents the 'Analítico' view now)
   const [activeTab, setActiveTab] = useState(initialTab === 'dashboard' ? 'dashboard' : 'extrato')
 
@@ -20,8 +20,22 @@ export default function FinanceiroManager({ initialTab }) {
 
   // Selected Month/Year state (common to all screens)
   // mes = 0 represents the entire year consolidations
-  const [selectedAno, setSelectedAno] = useState(2026)
-  const [selectedMes, setSelectedMes] = useState(6) // Junho
+  const [selectedAno, setSelectedAno] = useState(() => {
+    const saved = localStorage.getItem('fin_selectedAno')
+    return saved ? parseInt(saved, 10) : 2026
+  })
+  const [selectedMes, setSelectedMes] = useState(() => {
+    const saved = localStorage.getItem('fin_selectedMes')
+    return saved ? parseInt(saved, 10) : 6
+  })
+
+  useEffect(() => {
+    localStorage.setItem('fin_selectedAno', selectedAno)
+  }, [selectedAno])
+
+  useEffect(() => {
+    localStorage.setItem('fin_selectedMes', selectedMes)
+  }, [selectedMes])
 
   // Data States
   const [dashboardData, setDashboardData] = useState(null)
@@ -476,13 +490,15 @@ export default function FinanceiroManager({ initialTab }) {
           </select>
         </div>
         {/* Botão Histórico ao lado do filtro de período */}
-        <button
-          onClick={() => setShowHistoricoModal(true)}
-          title="Ver Histórico de Auditoria e Fechamentos"
-          className="p-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-400 hover:text-slate-600 rounded-xl shadow-sm transition-all"
-        >
-          <History className="h-4 w-4" />
-        </button>
+        {activeTab === 'extrato' && (
+          <button
+            onClick={() => setShowHistoricoModal(true)}
+            title="Ver Histórico de Auditoria e Fechamentos"
+            className="p-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-400 hover:text-slate-600 rounded-xl shadow-sm transition-all"
+          >
+            <History className="h-4 w-4" />
+          </button>
+        )}
       </div>
     )
   }
@@ -592,190 +608,176 @@ export default function FinanceiroManager({ initialTab }) {
       </div>
     )
 
-    const {
-      distribuicaoEntradas, distribuicaoSaidas,
-      historicoSaldos
-    } = dashboardData
+    const { distribuicaoEntradas, distribuicaoSaidas, historicoSaldos } = dashboardData
 
-    const ultimosMeses = [...historicoSaldos]
-      .filter(f => (f.entradasDoMes > 0 || f.saidasDoMes > 0))
+    // Sempre mostrar todos os 12 meses de Jan a Dez (com ou sem dados)
+    const todosMeses12 = (() => {
+      const mesesMap = {}
+      ;(historicoSaldos || []).forEach(f => { mesesMap[f.mes] = f })
+      return Array.from({ length: 12 }, (_, i) => {
+        const m = i + 1
+        return mesesMap[m] || { mes: m, entradasDoMes: 0, saidasDoMes: 0, saldoFinal: 0 }
+      })
+    })()
 
-    const maxValHistorico = ultimosMeses.reduce((acc, curr) => {
-      const valEntradas = curr.entradasDoMes || 0
-      const valSaidas = curr.saidasDoMes || 0
-      return Math.max(acc, valEntradas, valSaidas)
+    const maxValHistorico = todosMeses12.reduce((acc, curr) => {
+      return Math.max(acc, curr.entradasDoMes || 0, curr.saidasDoMes || 0)
     }, 1000)
 
     const getBarHeightPercent = (val) => {
       if (!val || val <= 0) return '0%'
       const pct = (val / maxValHistorico) * 85
-      return `${Math.max(5, pct)}%`
+      return `${Math.max(4, pct)}%`
     }
 
     const formatCompact = (val) => {
       if (!val || val <= 0) return ''
-      if (val >= 1000) {
-        return `R$ ${(val / 1000).toFixed(1)}K`.replace('.', ',').replace(',0K', 'K')
-      }
+      if (val >= 1000) return `R$ ${(val / 1000).toFixed(1).replace('.', ',')}K`.replace(',0K', 'K')
       return `R$ ${Math.round(val)}`
     }
 
-    return (
-      <div id="secao-imprimivel" className="space-y-6 print:p-0 print:border-none print:shadow-none print:w-[100%] print:max-w-[100%]">
-        
-        {/* Identidade Visual do Dashboard de Impressão (Centralizado e proporcional) */}
-        <div className="hidden print:flex flex-col items-center justify-center border-b border-slate-350 pb-6 mb-6 select-none w-full text-center">
-          <img
-            src="/logo.png"
-            alt="Logo da Igreja"
-            className="w-28 h-28 object-contain mb-3"
-          />
-          <h2 className="text-xl font-black text-slate-900 tracking-wider uppercase">Dashboards Financeiros Consolidado</h2>
-          <span className="text-xs font-bold text-slate-500 mt-1.5">
-            Competência: {selectedMes === 0 ? `Ano Completo / ${selectedAno}` : `${meses.find(m => m.value === selectedMes)?.label} / ${selectedAno}`}
-          </span>
+    const renderHistorico = () => (
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4 print:border-slate-300 print:p-4 print:space-y-2">
+        <div className="border-b border-slate-100 pb-3 print:pb-1.5 print:border-slate-200">
+          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider print:text-[9px]">Histórico de Entradas vs Saídas ({selectedAno})</h3>
         </div>
-
-          {/* Charts & Graphs (Inverted order: Distributions first, History second) */}
-        <div className="grid grid-cols-1 gap-6">
-          
-          {/* Categorias e distribuicoes (Largura total com grid interno de 2 colunas) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 print:gap-4">
-            {/* Entradas */}
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4 print:border-slate-300 print:p-4 print:space-y-2">
-              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2 print:pb-1 print:text-[9px] print:border-slate-200">Origem das Receitas</h3>
-              {distribuicaoEntradas.length > 0 ? (
-                <div className="space-y-3.5 print:space-y-2">
-                  {distribuicaoEntradas.slice(0, 5).map((e, idx) => (
-                    <div key={idx} className="space-y-1">
-                      <div className="flex justify-between items-center text-xs print:text-[9px]">
-                        <span className="font-semibold text-slate-600 truncate max-w-[70%]">{e.nome}</span>
-                        <span className="font-bold text-slate-850">{e.percentualQueRepresenta.toFixed(0)}%</span>
-                      </div>
-                      <div className="w-full bg-slate-100 rounded-full h-1.5 print:h-1">
-                        <div
-                          className="bg-emerald-600 h-1.5 print:h-1 rounded-full"
-                          style={{ width: `${e.percentualQueRepresenta}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-12 text-center text-slate-400 text-xs">Sem receitas no período.</div>
-              )}
+        <div className="flex gap-4 pt-2 print:pt-1 select-none">
+          <div className="flex flex-col justify-between text-[9px] text-slate-400 h-44 pb-6 print:h-24 print:pb-4 font-mono shrink-0 w-14 text-right">
+            <span className="print:hidden">{formatBRL(maxValHistorico)}</span>
+            <span className="print:hidden">{formatBRL(maxValHistorico * 0.5)}</span>
+            <span className="hidden print:block">{formatCompact(maxValHistorico)}</span>
+            <span className="hidden print:block">{formatCompact(maxValHistorico * 0.5)}</span>
+            <span>R$ 0</span>
+          </div>
+          <div className="flex-grow relative h-44 print:h-24 border-b border-l border-slate-200 print:border-slate-300">
+            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+              <div className="w-full border-t border-slate-100 print:border-slate-200"></div>
+              <div className="w-full border-t border-slate-100 print:border-slate-200"></div>
+              <div className="w-full"></div>
             </div>
-
-            {/* Saídas */}
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4 print:border-slate-300 print:p-4 print:space-y-2">
-              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2 print:pb-1 print:text-[9px] print:border-slate-200">Destinação das Saídas</h3>
-              {distribuicaoSaidas.length > 0 ? (
-                <div className="space-y-3.5 print:space-y-2">
-                  {distribuicaoSaidas.slice(0, 5).map((s, idx) => (
-                    <div key={idx} className="space-y-1">
-                      <div className="flex justify-between items-center text-xs print:text-[9px]">
-                        <span className="font-semibold text-slate-600 truncate max-w-[70%]">{s.nome}</span>
-                        <span className="font-bold text-slate-850">{s.percentualQueRepresenta.toFixed(0)}%</span>
-                      </div>
-                      <div className="w-full bg-slate-100 rounded-full h-1.5 print:h-1">
-                        <div
-                          className="bg-amber-500 h-1.5 print:h-1 rounded-full"
-                          style={{ width: `${s.percentualQueRepresenta}%` }}
-                        ></div>
+            <div className="absolute inset-0 flex items-end px-1" style={{ justifyContent: 'space-around' }}>
+              {todosMeses12.map((f, idx) => (
+                <div key={idx} className="flex flex-col items-center gap-1 flex-1 relative">
+                  <div className="flex items-end gap-1 h-32 print:h-20">
+                    <div
+                      className="bg-emerald-600 w-3 sm:w-5 rounded-t transition-all hover:bg-emerald-500 relative group"
+                      style={{ height: getBarHeightPercent(f.entradasDoMes) }}
+                    >
+                      {f.entradasDoMes > 0 && (
+                        <span className="hidden print:block absolute bottom-full left-1/2 -translate-x-1/2 mb-0.5 text-[6px] font-bold text-emerald-800 whitespace-nowrap">
+                          {formatCompact(f.entradasDoMes)}
+                        </span>
+                      )}
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] font-mono py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+                        {formatBRL(f.entradasDoMes)}
                       </div>
                     </div>
-                  ))}
+                    <div
+                      className="bg-amber-500 w-3 sm:w-5 rounded-t transition-all hover:bg-amber-400 relative group"
+                      style={{ height: getBarHeightPercent(f.saidasDoMes) }}
+                    >
+                      {f.saidasDoMes > 0 && (
+                        <span className="hidden print:block absolute bottom-full left-1/2 -translate-x-1/2 mb-0.5 text-[6px] font-bold text-amber-700 whitespace-nowrap">
+                          {formatCompact(f.saidasDoMes)}
+                        </span>
+                      )}
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] font-mono py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+                        {formatBRL(f.saidasDoMes)}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[7px] font-bold text-slate-500 mt-0.5 select-none print:text-[6px]">
+                    {meses.find(m => m.value === f.mes)?.label.slice(0, 3)}
+                  </span>
                 </div>
-              ) : (
-                <div className="py-12 text-center text-slate-400 text-xs">Sem despesas no período.</div>
-              )}
+              ))}
             </div>
           </div>
+        </div>
+        <div className="flex justify-center gap-4 text-xs font-semibold pt-1 print:text-[9px]">
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 bg-emerald-600 rounded"></div>
+            <span className="text-slate-600">Receitas</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 bg-amber-500 rounded"></div>
+            <span className="text-slate-600">Despesas</span>
+          </div>
+        </div>
+      </div>
+    )
 
-          {/* Histórico (Largura total, dando máximo espaço horizontal para evitar sobreposição de valores) */}
+    return (
+      <div id="secao-imprimivel" className="space-y-6 print:space-y-4 print:p-0 print:border-none print:shadow-none">
+
+        {/* Cabeçalho de Impressão: logo à esquerda, título menor centralizado, competência à direita */}
+        <div className="hidden print:flex items-center justify-between border-b border-slate-300 pb-4 mb-2 select-none">
+          <img src="/logo.png" alt="Logo da Igreja" className="w-16 h-16 object-contain shrink-0" />
+          <div className="flex-1 text-center px-4">
+            <h2 className="text-base font-extrabold text-slate-900 uppercase tracking-wide">Dashboards Financeiros Consolidado</h2>
+          </div>
+          <div className="text-right shrink-0">
+            <span className="text-[9px] text-slate-400 uppercase font-bold block">Competência</span>
+            <span className="text-xs font-bold text-slate-700">
+              {selectedMes === 0 ? `Ano Completo / ${selectedAno}` : `${meses.find(m => m.value === selectedMes)?.label} / ${selectedAno}`}
+            </span>
+          </div>
+        </div>
+
+        {/* Linha 1: 4 Cards de Macro Dados */}
+        {renderMacroCards()}
+
+        {/* Linha 2: Origem das Receitas (esquerda) + Destinação das Saídas (direita) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 print:gap-4">
+          {/* Origem (esquerda — primeiro) */}
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4 print:border-slate-300 print:p-4 print:space-y-2">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-3 print:pb-1.5 print:border-slate-200">
-              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider print:text-[9px]">Histórico de Entradas vs Saídas ({selectedAno})</h3>
-            </div>
-
-            {ultimosMeses.length > 0 ? (
-              <>
-                <div className="flex gap-4 pt-4 print:pt-1 select-none">
-                  <div className="flex flex-col justify-between text-[9px] text-slate-400 h-44 pb-6 print:h-28 print:pb-4 font-mono">
-                    <span className="print:hidden">{formatBRL(maxValHistorico)}</span>
-                    <span className="print:hidden">{formatBRL(maxValHistorico * 0.5)}</span>
-                    <span className="hidden print:block">{formatCompact(maxValHistorico)}</span>
-                    <span className="hidden print:block">{formatCompact(maxValHistorico * 0.5)}</span>
-                    <span>R$ 0</span>
-                  </div>
-
-                  <div className="flex-grow relative h-44 print:h-28 border-b border-l border-slate-200 print:border-slate-300">
-                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-                      <div className="w-full border-t border-slate-100 print:border-slate-200"></div>
-                      <div className="w-full border-t border-slate-100 print:border-slate-200"></div>
-                      <div className="w-full"></div>
+            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2 print:pb-1 print:text-[9px] print:border-slate-200">Origem das Receitas</h3>
+            {distribuicaoEntradas.length > 0 ? (
+              <div className="space-y-3.5 print:space-y-2">
+                {distribuicaoEntradas.slice(0, 5).map((e, idx) => (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex justify-between items-center text-xs print:text-[9px]">
+                      <span className="font-semibold text-slate-600 truncate max-w-[70%]">{e.nome}</span>
+                      <span className="font-bold text-slate-800">{e.percentualQueRepresenta.toFixed(0)}%</span>
                     </div>
-
-                    <div className="absolute inset-0 flex items-end justify-around px-2">
-                      {ultimosMeses.map((f, idx) => (
-                        <div key={idx} className="flex flex-col items-center gap-1.5 flex-1 max-w-[100px] relative">
-                          <div className="flex items-end gap-1 h-32 print:h-24">
-                            <div
-                              className="bg-emerald-600 w-1.5 sm:w-2.5 rounded-t transition-all hover:bg-emerald-500 relative group"
-                              style={{ height: getBarHeightPercent(f.entradasDoMes) }}
-                            >
-                              {f.entradasDoMes > 0 && (
-                                <span className="hidden print:block absolute bottom-full left-1/2 -translate-x-1/2 mb-0.5 text-[7px] font-bold text-emerald-800 whitespace-nowrap">
-                                  {formatCompact(f.entradasDoMes)}
-                                </span>
-                              )}
-                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] font-mono py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
-                                {formatBRL(f.entradasDoMes)}
-                              </div>
-                            </div>
-                            <div
-                              className="bg-amber-500 w-1.5 sm:w-2.5 rounded-t transition-all hover:bg-amber-400 relative group"
-                              style={{ height: getBarHeightPercent(f.saidasDoMes) }}
-                            >
-                              {f.saidasDoMes > 0 && (
-                                <span className="hidden print:block absolute bottom-full left-1/2 -translate-x-1/2 mb-0.5 text-[7px] font-bold text-amber-700 whitespace-nowrap">
-                                  {formatCompact(f.saidasDoMes)}
-                                </span>
-                              )}
-                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] font-mono py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
-                                {formatBRL(f.saidasDoMes)}
-                              </div>
-                            </div>
-                          </div>
-                          <span className="text-[8px] font-bold text-slate-500 mt-1 select-none">
-                            {f.mes === 0 ? 'Ano' : meses.find(m => m.value === f.mes)?.label.slice(0, 3)}
-                          </span>
-                        </div>
-                      ))}
+                    <div className="w-full bg-slate-100 rounded-full h-1.5 print:h-1">
+                      <div className="bg-emerald-600 h-1.5 print:h-1 rounded-full" style={{ width: `${e.percentualQueRepresenta}%` }}></div>
                     </div>
                   </div>
-                </div>
-                <div className="flex justify-center gap-4 text-xs font-semibold pt-2 print:pt-1 print:text-[9px]">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 bg-emerald-600 rounded"></div>
-                    <span className="text-slate-600">Receitas</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 bg-amber-500 rounded"></div>
-                    <span className="text-slate-600">Despesas</span>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="h-44 print:h-28 flex flex-col items-center justify-center text-slate-400 text-xs">
-                <ShieldAlert className="h-8 w-8 text-slate-300 mb-1" />
-                Nenhum lançamento financeiro para o ano.
+                ))}
               </div>
+            ) : (
+              <div className="py-8 text-center text-slate-400 text-xs">Sem receitas no período.</div>
+            )}
+          </div>
+
+          {/* Destinação (direita — segundo) */}
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4 print:border-slate-300 print:p-4 print:space-y-2">
+            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2 print:pb-1 print:text-[9px] print:border-slate-200">Destinação das Saídas</h3>
+            {distribuicaoSaidas.length > 0 ? (
+              <div className="space-y-3.5 print:space-y-2">
+                {distribuicaoSaidas.slice(0, 5).map((s, idx) => (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex justify-between items-center text-xs print:text-[9px]">
+                      <span className="font-semibold text-slate-600 truncate max-w-[70%]">{s.nome}</span>
+                      <span className="font-bold text-slate-800">{s.percentualQueRepresenta.toFixed(0)}%</span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-1.5 print:h-1">
+                      <div className="bg-amber-500 h-1.5 print:h-1 rounded-full" style={{ width: `${s.percentualQueRepresenta}%` }}></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-8 text-center text-slate-400 text-xs">Sem despesas no período.</div>
             )}
           </div>
         </div>
 
-        {/* Print button on Dashboard */}
+        {/* Linha 3: Histórico Jan–Dez (largura total) */}
+        {renderHistorico()}
+
+        {/* Botão Imprimir (oculto na impressão) */}
         <div className="print:hidden flex justify-end">
           <button
             onClick={triggerDashboardPrint}
@@ -788,6 +790,9 @@ export default function FinanceiroManager({ initialTab }) {
       </div>
     )
   }
+
+
+
 
   // --- SUB VIEW 2: ANALÍTICO (EXTRATO COM FECHAMENTO E MACROS DADOS) ---
   const renderAnalitico = () => {
@@ -1057,6 +1062,32 @@ export default function FinanceiroManager({ initialTab }) {
           <p className="text-sm text-slate-500 mt-1">Gestão de dízimos, despesas e auditoria de competências mensais ou anuais.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          {/* Alternância Rápida de Abas (Direto para o Dashboard ou Analítico) */}
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-sm select-none">
+            <button
+              onClick={() => navigateTo ? navigateTo('dashboards') : setActiveTab('dashboard')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeTab === 'dashboard'
+                  ? 'bg-white text-emerald-800 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50/50'
+              }`}
+            >
+              <PieChart className="h-3.5 w-3.5" />
+              Dashboard
+            </button>
+            <button
+              onClick={() => navigateTo ? navigateTo('analitico') : setActiveTab('extrato')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeTab === 'extrato'
+                  ? 'bg-white text-emerald-800 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50/50'
+              }`}
+            >
+              <ListFilter className="h-3.5 w-3.5" />
+              Analítico
+            </button>
+          </div>
+
           {renderSelectorPeriodo()}
         </div>
       </div>

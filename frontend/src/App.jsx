@@ -319,13 +319,13 @@ function App() {
       case 'cadastro':
         return <CadastroEleicao onBack={() => navigateTo('apuracao')} />
       case 'dashboards':
-        return <FinanceiroManager initialTab="dashboard" />
+        return <FinanceiroManager initialTab="dashboard" navigateTo={navigateTo} />
       case 'analitico':
-        return <FinanceiroManager initialTab="extrato" />
+        return <FinanceiroManager initialTab="extrato" navigateTo={navigateTo} />
       case 'fechamentos':
-        return <FinanceiroManager initialTab="extrato" />
+        return <FinanceiroManager initialTab="extrato" navigateTo={navigateTo} />
       case 'financeiro-relatorios':
-        return <FinanceiroManager initialTab="extrato" />
+        return <FinanceiroManager initialTab="extrato" navigateTo={navigateTo} />
       case 'voting':
         return renderUrna()
       default:
