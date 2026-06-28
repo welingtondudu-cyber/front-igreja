@@ -5,12 +5,12 @@ import java.util.List;
 
 public record FinanceiroDashboardDTO(
     BigDecimal receitaOperacional,
-    double receitaTendenciaPercentual,
+    Double receitaTendenciaPercentual,       // null = sem dados para comparar
     BigDecimal despesasConsolidadas,
-    double despesasTendenciaPercentual,
+    Double despesasTendenciaPercentual,      // null = sem dados para comparar
     BigDecimal saldoDoMes,
     double dizimistasAtivosPercentual,
-    double dizimistasAtivosTendenciaPercentual,
+    Double dizimistasAtivosTendenciaPercentual, // null = sem dados para comparar
     List<CategoriaDistribuicaoDTO> distribuicaoEntradas,
     List<CategoriaDistribuicaoDTO> distribuicaoSaidas,
     List<FechamentoMensalResumoDTO> historicoSaldos

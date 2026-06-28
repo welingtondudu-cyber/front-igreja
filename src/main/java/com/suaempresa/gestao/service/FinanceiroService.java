@@ -270,10 +270,23 @@ public class FinanceiroService {
 
         BigDecimal saldoDoMes = receitaOperacional.subtract(despesasConsolidadas);
 
-        // Período imediatamente anterior equivalente
-        long dias = ChronoUnit.DAYS.between(dataInicio, dataFim) + 1;
-        LocalDate dataInicioAnterior = dataInicio.minusDays(dias);
-        LocalDate dataFimAnterior = dataInicio.minusDays(1);
+        // Período anterior: anual vs mês corrido
+        int anoAtual = dataInicio.getYear();
+        boolean isAnual = dataInicio.getMonthValue() == 1 && dataFim.getMonthValue() == 12;
+
+        LocalDate dataInicioAnterior;
+        LocalDate dataFimAnterior;
+
+        if (isAnual) {
+            // Quando for Ano Completo, comparar com o ano anterior inteiro
+            dataInicioAnterior = LocalDate.of(anoAtual - 1, 1, 1);
+            dataFimAnterior    = LocalDate.of(anoAtual - 1, 12, 31);
+        } else {
+            // Para visão mensal, comparar com o mês imediatamente anterior
+            long dias = ChronoUnit.DAYS.between(dataInicio, dataFim) + 1;
+            dataInicioAnterior = dataInicio.minusDays(dias);
+            dataFimAnterior    = dataInicio.minusDays(1);
+        }
 
         List<Lancamento> lancamentosAnteriores = lancamentoRepository.findByDataBetweenWithDetails(dataInicioAnterior, dataFimAnterior);
 
@@ -287,15 +300,21 @@ public class FinanceiroService {
             .map(Lancamento::getValor)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        double receitaTendencia = calcularVariacaoPercentual(receitaOperacional, receitaAnterior);
-        double despesasTendencia = calcularVariacaoPercentual(despesasConsolidadas, despesaAnterior);
+        // null = sem dados para comparar (não exibir tendência)
+        Double receitaTendencia  = lancamentosAnteriores.isEmpty() ? null : calcularVariacaoPercentual(receitaOperacional, receitaAnterior);
+        Double despesasTendencia = lancamentosAnteriores.isEmpty() ? null : calcularVariacaoPercentual(despesasConsolidadas, despesaAnterior);
 
-        // Métrica de Dizimistas Ativos
+        // Métrica de Dizimistas — contar apenas lançamentos de categoria Dízimos com membro vinculado
         long totalMembrosAtivos = membroRepository.countByStatusCadastroIgnoreCase("Ativo");
         if (totalMembrosAtivos == 0) totalMembrosAtivos = 1;
 
         long dizimistasPeriodoAtual = lancamentos.stream()
-            .filter(l -> l.getMembroDizimista() != null)
+            .filter(l -> l.getMembroDizimista() != null
+                && l.getCategoria() != null
+                && l.getCategoria().getNome().toLowerCase().contains("dízimo")
+                    || (l.getMembroDizimista() != null
+                        && l.getCategoria() != null
+                        && l.getCategoria().getNome().toLowerCase().contains("dizimo")))
             .map(l -> l.getMembroDizimista().getId())
             .distinct()
             .count();
@@ -303,13 +322,18 @@ public class FinanceiroService {
         double dizimistasAtivosPercentual = ((double) dizimistasPeriodoAtual / totalMembrosAtivos) * 100.0;
 
         long dizimistasPeriodoAnterior = lancamentosAnteriores.stream()
-            .filter(l -> l.getMembroDizimista() != null)
+            .filter(l -> l.getMembroDizimista() != null
+                && l.getCategoria() != null
+                && l.getCategoria().getNome().toLowerCase().contains("dízimo")
+                    || (l.getMembroDizimista() != null
+                        && l.getCategoria() != null
+                        && l.getCategoria().getNome().toLowerCase().contains("dizimo")))
             .map(l -> l.getMembroDizimista().getId())
             .distinct()
             .count();
 
         double dizimistasAnteriorPercentual = ((double) dizimistasPeriodoAnterior / totalMembrosAtivos) * 100.0;
-        double dizimistasTendencia = dizimistasAtivosPercentual - dizimistasAnteriorPercentual;
+        Double dizimistasTendencia = lancamentosAnteriores.isEmpty() ? null : (dizimistasAtivosPercentual - dizimistasAnteriorPercentual);
 
         // Distribuições por Categoria
         List<CategoriaDistribuicaoDTO> distribuicaoEntradas = agruparPorCategoria(lancamentos, TipoFluxo.ENTRADA, receitaOperacional);

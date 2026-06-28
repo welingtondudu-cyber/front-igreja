@@ -385,6 +385,10 @@ export default function FinanceiroManager({ initialTab }) {
     }
   }
 
+  const triggerDashboardPrint = () => {
+    window.print()
+  }
+
   const Long = (val) => {
     if (!val) return null
     return parseInt(val, 10)
@@ -427,30 +431,40 @@ export default function FinanceiroManager({ initialTab }) {
 
   const renderSelectorPeriodo = () => {
     return (
-      <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm">
-        <Calendar className="h-4 w-4 text-emerald-700 shrink-0" />
-        <select
-          value={selectedMes}
-          onChange={(e) => setSelectedMes(parseInt(e.target.value))}
-          className="bg-transparent font-bold text-slate-800 text-sm focus:outline-none border-none cursor-pointer"
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm">
+          <Calendar className="h-4 w-4 text-emerald-700 shrink-0" />
+          <select
+            value={selectedMes}
+            onChange={(e) => setSelectedMes(parseInt(e.target.value))}
+            className="bg-transparent font-bold text-slate-800 text-sm focus:outline-none border-none cursor-pointer"
+          >
+            {meses.map(m => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+          </select>
+          <div className="w-[1px] h-4 bg-slate-200"></div>
+          <select
+            value={selectedAno}
+            onChange={(e) => setSelectedAno(parseInt(e.target.value))}
+            className="bg-transparent font-bold text-slate-800 text-sm focus:outline-none border-none cursor-pointer"
+          >
+            {(() => {
+              const anoAtual = new Date().getFullYear()
+              return [anoAtual - 2, anoAtual - 1, anoAtual, anoAtual + 1].map(a => (
+                <option key={a} value={a}>{a}</option>
+              ))
+            })()}
+          </select>
+        </div>
+        {/* Botão Histórico ao lado do filtro de período */}
+        <button
+          onClick={() => setShowHistoricoModal(true)}
+          title="Ver Histórico de Auditoria e Fechamentos"
+          className="p-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-400 hover:text-slate-600 rounded-xl shadow-sm transition-all"
         >
-          {meses.map(m => (
-            <option key={m.value} value={m.value}>{m.label}</option>
-          ))}
-        </select>
-        <div className="w-[1px] h-4 bg-slate-200"></div>
-        <select
-          value={selectedAno}
-          onChange={(e) => setSelectedAno(parseInt(e.target.value))}
-          className="bg-transparent font-bold text-slate-800 text-sm focus:outline-none border-none cursor-pointer"
-        >
-          {(() => {
-            const anoAtual = new Date().getFullYear()
-            return [anoAtual - 2, anoAtual - 1, anoAtual, anoAtual + 1].map(a => (
-              <option key={a} value={a}>{a}</option>
-            ))
-          })()}
-        </select>
+          <History className="h-4 w-4" />
+        </button>
       </div>
     )
   }
@@ -469,59 +483,54 @@ export default function FinanceiroManager({ initialTab }) {
     }
   }
 
-  // --- MACROS DADOS CONSOLIDADOS (CARDS INDICADORES) ---
+  // --- MACROS   // Cards de macro dados — usados em dashboard e analítico
   const renderMacroCards = () => {
     if (!dashboardData) return null
 
     const {
       receitaOperacional, receitaTendenciaPercentual,
       despesasConsolidadas, despesasTendenciaPercentual,
-      saldoDoMes, dizimistasAtivosPercentual,
-      dizimistasAtivosTendenciaPercentual
+      saldoDoMes,
+      dizimistasAtivosPercentual, dizimistasAtivosTendenciaPercentual
     } = dashboardData
 
+    // Calcula número absoluto de dizimistas a partir da %
+    const totalMembrosAtivos = dashboardData.totalMembrosAtivos
+
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 print-grid">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 print-grid">
         {/* Receitas */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm print:border-slate-300 print:p-4">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block print:text-[9px]">Receita Operacional</span>
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block print:text-[9px]">Receitas Consolidadas</span>
           <span className="text-2xl font-bold text-slate-800 block mt-1 print:text-lg print:text-slate-950 print:font-extrabold">{formatBRL(receitaOperacional)}</span>
-          <span className={`text-xs font-semibold mt-1.5 flex items-center gap-1 print:hidden ${
-            receitaTendenciaPercentual >= 0 ? 'text-emerald-600' : 'text-red-500'
-          }`}>
-            {receitaTendenciaPercentual >= 0 ? (
-              <>
-                <TrendingUp className="h-3 w-3" />
-                ▲ +{receitaTendenciaPercentual}% vs anterior
-              </>
-            ) : (
-              <>
-                <TrendingDown className="h-3 w-3" />
-                ▼ {receitaTendenciaPercentual}% vs anterior
-              </>
-            )}
-          </span>
+          {receitaTendenciaPercentual !== null && receitaTendenciaPercentual !== undefined ? (
+            <span className={`text-xs font-semibold mt-1.5 flex items-center gap-1 print:hidden ${
+              receitaTendenciaPercentual >= 0 ? 'text-emerald-600' : 'text-red-500'
+            }`}>
+              {receitaTendenciaPercentual >= 0 ? (
+                <><TrendingUp className="h-3 w-3" /> ▲ +{receitaTendenciaPercentual.toFixed(1)}% vs anterior</>
+              ) : (
+                <><TrendingDown className="h-3 w-3" /> ▼ {receitaTendenciaPercentual.toFixed(1)}% vs anterior</>
+              )}
+            </span>
+          ) : null}
         </div>
 
         {/* Despesas */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm print:border-slate-300 print:p-4">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block print:text-[9px]">Despesas Consolidadas</span>
           <span className="text-2xl font-bold text-slate-800 block mt-1 print:text-lg print:text-slate-950 print:font-extrabold">{formatBRL(despesasConsolidadas)}</span>
-          <span className={`text-xs font-semibold mt-1.5 flex items-center gap-1 print:hidden ${
-            despesasTendenciaPercentual <= 0 ? 'text-emerald-600' : 'text-red-500'
-          }`}>
-            {despesasTendenciaPercentual <= 0 ? (
-              <>
-                <TrendingDown className="h-3 w-3" />
-                ▼ {despesasTendenciaPercentual}% vs anterior
-              </>
-            ) : (
-              <>
-                <TrendingUp className="h-3 w-3" />
-                ▲ +{despesasTendenciaPercentual}% vs anterior
-              </>
-            )}
-          </span>
+          {despesasTendenciaPercentual !== null && despesasTendenciaPercentual !== undefined ? (
+            <span className={`text-xs font-semibold mt-1.5 flex items-center gap-1 print:hidden ${
+              despesasTendenciaPercentual <= 0 ? 'text-emerald-600' : 'text-red-500'
+            }`}>
+              {despesasTendenciaPercentual <= 0 ? (
+                <><TrendingDown className="h-3 w-3" /> ▼ {despesasTendenciaPercentual.toFixed(1)}% vs anterior</>
+              ) : (
+                <><TrendingUp className="h-3 w-3" /> ▲ +{despesasTendenciaPercentual.toFixed(1)}% vs anterior</>
+              )}
+            </span>
+          ) : null}
         </div>
 
         {/* Saldo */}
@@ -535,27 +544,24 @@ export default function FinanceiroManager({ initialTab }) {
           </span>
         </div>
 
-        {/* Contribuintes */}
+        {/* Dizimistas */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm print:border-slate-300 print:p-4">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block print:text-[9px]">Engajamento Contribuintes</span>
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block print:text-[9px]">Dizimistas</span>
           <span className="text-2xl font-bold text-emerald-800 block mt-1 print:text-lg print:text-emerald-950 print:font-extrabold">
             {dizimistasAtivosPercentual.toFixed(0)}%
           </span>
-          <span className={`text-xs font-semibold mt-1.5 flex items-center gap-1 print:hidden ${
-            dizimistasAtivosTendenciaPercentual >= 0 ? 'text-emerald-600' : 'text-red-500'
-          }`}>
-            {dizimistasAtivosTendenciaPercentual >= 0 ? (
-              <>
-                <TrendingUp className="h-3 w-3" />
-                ▲ +{dizimistasAtivosTendenciaPercentual.toFixed(0)}% vs anterior
-              </>
-            ) : (
-              <>
-                <TrendingDown className="h-3 w-3" />
-                ▼ {dizimistasAtivosTendenciaPercentual.toFixed(0)}% vs anterior
-              </>
-            )}
-          </span>
+          <span className="text-[10px] text-slate-400 font-semibold block mt-0.5 print:text-[8px]">dos membros ativos</span>
+          {dizimistasAtivosTendenciaPercentual !== null && dizimistasAtivosTendenciaPercentual !== undefined ? (
+            <span className={`text-xs font-semibold mt-1 flex items-center gap-1 print:hidden ${
+              dizimistasAtivosTendenciaPercentual >= 0 ? 'text-emerald-600' : 'text-red-500'
+            }`}>
+              {dizimistasAtivosTendenciaPercentual >= 0 ? (
+                <><TrendingUp className="h-3 w-3" /> ▲ +{dizimistasAtivosTendenciaPercentual.toFixed(0)}pp vs anterior</>
+              ) : (
+                <><TrendingDown className="h-3 w-3" /> ▼ {dizimistasAtivosTendenciaPercentual.toFixed(0)}pp vs anterior</>
+              )}
+            </span>
+          ) : null}
         </div>
       </div>
     )
@@ -810,27 +816,20 @@ export default function FinanceiroManager({ initialTab }) {
             {trancado ? (
               <button
                 onClick={() => setShowReabrirModal(true)}
-                className="flex-1 md:w-full flex items-center justify-center gap-2 border border-amber-300 hover:bg-amber-50 text-amber-800 rounded-xl py-2 text-xs font-bold transition-all"
+                className="flex-1 md:w-full flex items-center justify-center gap-2 border border-amber-300 hover:bg-amber-50 text-amber-800 rounded-xl py-1.5 px-3 text-xs font-bold transition-all"
               >
-                <Unlock className="h-3.5 w-3.5 text-amber-600" />
+                <Unlock className="h-3 w-3.5 text-amber-600" />
                 Reabrir Período
               </button>
             ) : (
               <button
                 onClick={() => setShowFechamentoConfirmModal(true)}
-                className="flex-1 md:w-full flex items-center justify-center gap-2 border border-red-200 bg-red-50 hover:bg-red-100 text-red-750 rounded-xl py-2 text-xs font-bold transition-all shadow-sm"
+                className="flex-1 md:w-full flex items-center justify-center gap-1.5 border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl py-1.5 px-3 text-[11px] font-bold transition-all shadow-sm"
               >
-                <Lock className="h-3.5 w-3.5 text-red-600" />
+                <Lock className="h-3 w-3.5 text-red-600" />
                 Encerrar Competência
               </button>
             )}
-            <button
-              onClick={() => setShowHistoricoModal(true)}
-              title="Ver Histórico de Auditoria"
-              className="p-2 border border-slate-200 hover:bg-slate-50 text-slate-400 hover:text-slate-600 rounded-xl transition-all"
-            >
-              <History className="h-3.5 w-3.5" />
-            </button>
           </div>
         </div>
 
