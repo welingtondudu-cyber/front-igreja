@@ -623,33 +623,77 @@ export default function FinanceiroManager({ initialTab }) {
     return (
       <div id="secao-imprimivel" className="space-y-6 print:p-0 print:border-none print:shadow-none print:w-[100%] print:max-w-[100%]">
         
-        {/* Identidade Visual do Dashboard de Impressão */}
-        <div className="hidden print:flex items-center justify-between border-b border-slate-350 pb-4 mb-4 select-none">
-          <div className="flex gap-4 items-center">
-            <img
-              src="/logo.png"
-              alt="Logo da Igreja"
-              className="w-20 h-20 object-contain"
-            />
-            <div>
-              <h2 className="text-base font-extrabold text-slate-900 tracking-tight">Igreja Presbiteriana do Ipês</h2>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Dashboards Financeiros Consolidado</p>
-            </div>
-          </div>
-          <div className="text-right">
-            <span className="text-[10px] text-slate-400 uppercase font-bold block">Competência</span>
-            <span className="text-xs font-bold text-slate-700">{selectedMes === 0 ? `Ano Completo / ${selectedAno}` : `${meses.find(m => m.value === selectedMes)?.label} / ${selectedAno}`}</span>
-          </div>
+        {/* Identidade Visual do Dashboard de Impressão (Centralizado e proporcional) */}
+        <div className="hidden print:flex flex-col items-center justify-center border-b border-slate-350 pb-6 mb-6 select-none w-full text-center">
+          <img
+            src="/logo.png"
+            alt="Logo da Igreja"
+            className="w-28 h-28 object-contain mb-3"
+          />
+          <h2 className="text-xl font-black text-slate-900 tracking-wider uppercase">Dashboards Financeiros Consolidado</h2>
+          <span className="text-xs font-bold text-slate-500 mt-1.5">
+            Competência: {selectedMes === 0 ? `Ano Completo / ${selectedAno}` : `${meses.find(m => m.value === selectedMes)?.label} / ${selectedAno}`}
+          </span>
         </div>
 
-        {/* Cards de Macro Dados */}
-        {renderMacroCards()}
-
-        {/* Charts & Graphs */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Charts & Graphs (Inverted order: Distributions first, History second) */}
+        <div className="grid grid-cols-1 gap-6">
           
-          {/* Histórico */}
-          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4 print:border-slate-300 print:p-4 print:space-y-2">
+          {/* Categorias e distribuicoes (Largura total com grid interno de 2 colunas) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 print:gap-4">
+            {/* Entradas */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4 print:border-slate-300 print:p-4 print:space-y-2">
+              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2 print:pb-1 print:text-[9px] print:border-slate-200">Origem das Receitas</h3>
+              {distribuicaoEntradas.length > 0 ? (
+                <div className="space-y-3.5 print:space-y-2">
+                  {distribuicaoEntradas.slice(0, 5).map((e, idx) => (
+                    <div key={idx} className="space-y-1">
+                      <div className="flex justify-between items-center text-xs print:text-[9px]">
+                        <span className="font-semibold text-slate-600 truncate max-w-[70%]">{e.nome}</span>
+                        <span className="font-bold text-slate-850">{e.percentualQueRepresenta.toFixed(0)}%</span>
+                      </div>
+                      <div className="w-full bg-slate-100 rounded-full h-1.5 print:h-1">
+                        <div
+                          className="bg-emerald-600 h-1.5 print:h-1 rounded-full"
+                          style={{ width: `${e.percentualQueRepresenta}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-12 text-center text-slate-400 text-xs">Sem receitas no período.</div>
+              )}
+            </div>
+
+            {/* Saídas */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4 print:border-slate-300 print:p-4 print:space-y-2">
+              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2 print:pb-1 print:text-[9px] print:border-slate-200">Destinação das Saídas</h3>
+              {distribuicaoSaidas.length > 0 ? (
+                <div className="space-y-3.5 print:space-y-2">
+                  {distribuicaoSaidas.slice(0, 5).map((s, idx) => (
+                    <div key={idx} className="space-y-1">
+                      <div className="flex justify-between items-center text-xs print:text-[9px]">
+                        <span className="font-semibold text-slate-600 truncate max-w-[70%]">{s.nome}</span>
+                        <span className="font-bold text-slate-850">{s.percentualQueRepresenta.toFixed(0)}%</span>
+                      </div>
+                      <div className="w-full bg-slate-100 rounded-full h-1.5 print:h-1">
+                        <div
+                          className="bg-amber-500 h-1.5 print:h-1 rounded-full"
+                          style={{ width: `${s.percentualQueRepresenta}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-12 text-center text-slate-400 text-xs">Sem despesas no período.</div>
+              )}
+            </div>
+          </div>
+
+          {/* Histórico (Largura total, dando máximo espaço horizontal para evitar sobreposição de valores) */}
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4 print:border-slate-300 print:p-4 print:space-y-2">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3 print:pb-1.5 print:border-slate-200">
               <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider print:text-[9px]">Histórico de Entradas vs Saídas ({selectedAno})</h3>
             </div>
@@ -674,8 +718,8 @@ export default function FinanceiroManager({ initialTab }) {
 
                     <div className="absolute inset-0 flex items-end justify-around px-2">
                       {ultimosMeses.map((f, idx) => (
-                        <div key={idx} className="flex flex-col items-center gap-1.5 w-[7%] relative">
-                          <div className="flex items-end gap-0.5 h-32 print:h-24">
+                        <div key={idx} className="flex flex-col items-center gap-1.5 flex-1 max-w-[100px] relative">
+                          <div className="flex items-end gap-1 h-32 print:h-24">
                             <div
                               className="bg-emerald-600 w-1.5 sm:w-2.5 rounded-t transition-all hover:bg-emerald-500 relative group"
                               style={{ height: getBarHeightPercent(f.entradasDoMes) }}
@@ -728,59 +772,6 @@ export default function FinanceiroManager({ initialTab }) {
                 Nenhum lançamento financeiro para o ano.
               </div>
             )}
-          </div>
-
-          {/* Categorias e distribuicoes */}
-          <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6 print:gap-4">
-            {/* Entradas */}
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4 print:border-slate-300 print:p-4 print:space-y-2">
-              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2 print:pb-1 print:text-[9px] print:border-slate-200">Origem das Receitas</h3>
-              {distribuicaoEntradas.length > 0 ? (
-                <div className="space-y-3.5 print:space-y-2">
-                  {distribuicaoEntradas.slice(0, 5).map((e, idx) => (
-                    <div key={idx} className="space-y-1">
-                      <div className="flex justify-between items-center text-xs print:text-[9px]">
-                        <span className="font-semibold text-slate-600 truncate max-w-[70%]">{e.nome}</span>
-                        <span className="font-bold text-slate-850">{e.percentualQueRepresenta.toFixed(0)}%</span>
-                      </div>
-                      <div className="w-full bg-slate-100 rounded-full h-1.5 print:h-1">
-                        <div
-                          className="bg-emerald-600 h-1.5 print:h-1 rounded-full"
-                          style={{ width: `${e.percentualQueRepresenta}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-12 text-center text-slate-400 text-xs">Sem receitas no período.</div>
-              )}
-            </div>
-
-            {/* Saídas */}
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4 print:border-slate-300 print:p-4 print:space-y-2">
-              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2 print:pb-1 print:text-[9px] print:border-slate-200">Destinação das Saídas</h3>
-              {distribuicaoSaidas.length > 0 ? (
-                <div className="space-y-3.5 print:space-y-2">
-                  {distribuicaoSaidas.slice(0, 5).map((s, idx) => (
-                    <div key={idx} className="space-y-1">
-                      <div className="flex justify-between items-center text-xs print:text-[9px]">
-                        <span className="font-semibold text-slate-600 truncate max-w-[70%]">{s.nome}</span>
-                        <span className="font-bold text-slate-850">{s.percentualQueRepresenta.toFixed(0)}%</span>
-                      </div>
-                      <div className="w-full bg-slate-100 rounded-full h-1.5 print:h-1">
-                        <div
-                          className="bg-amber-500 h-1.5 print:h-1 rounded-full"
-                          style={{ width: `${s.percentualQueRepresenta}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-12 text-center text-slate-400 text-xs">Sem despesas no período.</div>
-              )}
-            </div>
           </div>
         </div>
 
@@ -1013,22 +1004,34 @@ export default function FinanceiroManager({ initialTab }) {
               transform: scale(0.95);
               transform-origin: top left;
               width: 105% !important;
+              background-color: #ffffff !important;
             }
             #secao-imprimivel .grid {
               display: grid !important;
             }
-            #secao-imprimivel .grid-cols-2,
+            /* Cards de valores macros ocupam 4 colunas */
             #secao-imprimivel .print-grid {
               grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
             }
+            /* Cards de Origem e Destinação (lado a lado, 50% de largura cada) */
             #secao-imprimivel .grid-cols-1 {
-              grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
             }
+            /* O gráfico de histórico fica abaixo ocupando a largura total (col-span-2 nas duas colunas) */
             #secao-imprimivel .lg\\:col-span-2 {
               grid-column: span 2 / span 2 !important;
             }
-            #secao-imprimivel .lg\\:col-span-2 .grid {
-              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            /* Limpar fundos cinzas e sombras dos cards */
+            #secao-imprimivel .shadow-sm,
+            #secao-imprimivel .shadow {
+              box-shadow: none !important;
+            }
+            #secao-imprimivel .bg-white,
+            #secao-imprimivel .bg-slate-50 {
+              background-color: #ffffff !important;
+            }
+            #secao-imprimivel .bg-slate-100 {
+              background-color: #f8fafc !important;
             }
           ` : ''}
           
