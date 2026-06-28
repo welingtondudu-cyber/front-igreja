@@ -539,9 +539,6 @@ export default function FinanceiroManager({ initialTab }) {
           <span className={`text-2xl font-bold block mt-1 print:text-lg print:text-slate-950 print:font-extrabold ${saldoDoMes >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>
             {formatBRL(saldoDoMes)}
           </span>
-          <span className="text-[10px] text-slate-400 font-semibold block mt-1.5 uppercase print:text-[8px]">
-            {saldoDoMes >= 0 ? 'Superávit Acumulado' : 'Déficit no Período'}
-          </span>
         </div>
 
         {/* Dizimistas */}
@@ -583,8 +580,7 @@ export default function FinanceiroManager({ initialTab }) {
     } = dashboardData
 
     const ultimosMeses = [...historicoSaldos]
-      .reverse()
-      .slice(-12) // Mostrar até 12 meses do ano
+      .filter(f => (f.entradasDoMes > 0 || f.saidasDoMes > 0))
 
     const maxValHistorico = ultimosMeses.reduce((acc, curr) => {
       const valEntradas = curr.entradasDoMes || 0
@@ -596,6 +592,14 @@ export default function FinanceiroManager({ initialTab }) {
       if (!val) return '0%'
       const pct = (val / maxValHistorico) * 85
       return `${Math.max(5, pct)}%`
+    }
+
+    const formatCompact = (val) => {
+      if (val === 0) return 'R$ 0'
+      if (val >= 1000) {
+        return `R$ ${(val / 1000).toFixed(1)}K`.replace('.', ',')
+      }
+      return formatBRL(val)
     }
 
     return (
@@ -624,21 +628,22 @@ export default function FinanceiroManager({ initialTab }) {
         {renderMacroCards()}
 
         {/* Charts & Graphs */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 print-flex-row">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           
           {/* Histórico */}
-          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4 print-w-half print:border-slate-300 print:p-4 print:space-y-2">
+          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4 print:border-slate-300 print:p-4 print:space-y-2">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3 print:pb-1.5 print:border-slate-200">
               <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider print:text-[9px]">Histórico de Entradas vs Saídas ({selectedAno})</h3>
-              <BarChart3 className="h-4 w-4 text-emerald-700 print:hidden" />
             </div>
 
             {ultimosMeses.length > 0 ? (
               <>
                 <div className="flex gap-4 pt-4 print:pt-1 select-none">
                   <div className="flex flex-col justify-between text-[9px] text-slate-400 h-44 pb-6 print:h-28 print:pb-4 font-mono">
-                    <span>{formatBRL(maxValHistorico)}</span>
-                    <span>{formatBRL(maxValHistorico * 0.5)}</span>
+                    <span className="print:hidden">{formatBRL(maxValHistorico)}</span>
+                    <span className="print:hidden">{formatBRL(maxValHistorico * 0.5)}</span>
+                    <span className="hidden print:block">{formatCompact(maxValHistorico)}</span>
+                    <span className="hidden print:block">{formatCompact(maxValHistorico * 0.5)}</span>
                     <span>R$ 0</span>
                   </div>
 
@@ -657,6 +662,11 @@ export default function FinanceiroManager({ initialTab }) {
                               className="bg-emerald-600 w-1.5 sm:w-2.5 rounded-t transition-all hover:bg-emerald-500 relative group"
                               style={{ height: getBarHeightPercent(f.entradasDoMes) }}
                             >
+                              {f.entradasDoMes > 0 && (
+                                <span className="hidden print:block absolute bottom-full left-1/2 -translate-x-1/2 mb-0.5 text-[7px] font-bold text-emerald-800 whitespace-nowrap">
+                                  {formatCompact(f.entradasDoMes)}
+                                </span>
+                              )}
                               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] font-mono py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
                                 {formatBRL(f.entradasDoMes)}
                               </div>
@@ -665,6 +675,11 @@ export default function FinanceiroManager({ initialTab }) {
                               className="bg-amber-500 w-1.5 sm:w-2.5 rounded-t transition-all hover:bg-amber-400 relative group"
                               style={{ height: getBarHeightPercent(f.saidasDoMes) }}
                             >
+                              {f.saidasDoMes > 0 && (
+                                <span className="hidden print:block absolute bottom-full left-1/2 -translate-x-1/2 mb-0.5 text-[7px] font-bold text-amber-700 whitespace-nowrap">
+                                  {formatCompact(f.saidasDoMes)}
+                                </span>
+                              )}
                               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] font-mono py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
                                 {formatBRL(f.saidasDoMes)}
                               </div>
@@ -698,7 +713,7 @@ export default function FinanceiroManager({ initialTab }) {
           </div>
 
           {/* Categorias e distribuicoes */}
-          <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6 print-w-half print:gap-4">
+          <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6 print:gap-4">
             {/* Entradas */}
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4 print:border-slate-300 print:p-4 print:space-y-2">
               <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2 print:pb-1 print:text-[9px] print:border-slate-200">Origem das Receitas</h3>
@@ -970,7 +985,6 @@ export default function FinanceiroManager({ initialTab }) {
           
           body * {
             visibility: hidden;
-            background-color: transparent !important;
           }
           
           #secao-imprimivel, #secao-imprimivel * {
@@ -989,31 +1003,33 @@ export default function FinanceiroManager({ initialTab }) {
             box-shadow: none !important;
           }
           
-          /* Special scale for landscape A4 dashboard */
+          /* Special scale and layout force for A4 landscape dashboard */
           ${activeTab === 'dashboard' ? `
             #secao-imprimivel {
-              transform: scale(0.85);
+              transform: scale(0.95);
               transform-origin: top left;
-              width: 118% !important; /* compensate scale */
+              width: 105% !important;
             }
-            .print-grid {
+            .grid {
               display: grid !important;
+            }
+            .grid-cols-2 {
+              grid-template-cols: repeat(2, minmax(0, 1fr)) !important;
+            }
+            .lg\\:grid-cols-4 {
               grid-template-cols: repeat(4, minmax(0, 1fr)) !important;
-              gap: 8px !important;
             }
-            .print-flex-row {
-              display: flex !important;
-              flex-direction: row !important;
-              gap: 12px !important;
+            .lg\\:col-span-2 {
+              grid-column: span 2 / span 2 !important;
             }
-            .print-w-half {
-              width: 50% !important;
+            .sm\\:grid-cols-2 {
+              grid-template-cols: repeat(2, minmax(0, 1fr)) !important;
             }
           ` : ''}
           
           @page {
             size: ${activeTab === 'dashboard' ? 'A4 landscape' : 'A4 portrait'};
-            margin: 0.5cm;
+            margin: 0.4cm;
           }
         }
       `}</style>
