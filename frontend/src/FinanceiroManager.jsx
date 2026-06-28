@@ -686,7 +686,7 @@ export default function FinanceiroManager({ initialTab, navigateTo }) {
                       </div>
                     </div>
                   </div>
-                  <span className="text-[7px] font-bold text-slate-500 mt-0.5 select-none print:text-[6px]">
+                  <span className="text-[10px] sm:text-xs font-bold text-slate-600 mt-1 select-none print:text-[8px] print:mt-0.5">
                     {meses.find(m => m.value === f.mes)?.label.slice(0, 3)}
                   </span>
                 </div>
@@ -712,7 +712,7 @@ export default function FinanceiroManager({ initialTab, navigateTo }) {
 
         {/* Cabeçalho de Impressão: logo à esquerda, título menor centralizado, competência à direita */}
         <div className="hidden print:flex items-center justify-between border-b border-slate-300 pb-4 mb-2 select-none">
-          <img src="/logo.png" alt="Logo da Igreja" className="w-16 h-16 object-contain shrink-0" />
+          <img src="/logo.png" alt="Logo da Igreja" className="w-24 h-24 object-contain shrink-0" />
           <div className="flex-1 text-center px-4">
             <h2 className="text-base font-extrabold text-slate-900 uppercase tracking-wide">Dashboards Financeiros Consolidado</h2>
           </div>
