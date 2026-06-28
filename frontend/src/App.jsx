@@ -12,13 +12,14 @@ import MembrosManager from './MembrosManager'
 import OrganogramaView from './OrganogramaView'
 import RestricoesManager from './RestricoesManager'
 import FinanceiroManager from './FinanceiroManager'
+import EscalasManager from './EscalasManager'
 
 function App() {
   // Navigation & View States
   const [currentView, setCurrentView] = useState(() => {
     const params = new URLSearchParams(window.location.search)
     const view = params.get('view')
-    if (view && ['feed', 'calendario', 'membros', 'organograma', 'restricoes', 'apuracao', 'cadastro', 'dashboards', 'analitico', 'fechamentos', 'financeiro-relatorios'].includes(view)) {
+    if (view && ['feed', 'calendario', 'membros', 'organograma', 'restricoes', 'apuracao', 'cadastro', 'dashboards', 'analitico', 'fechamentos', 'financeiro-relatorios', 'escalas'].includes(view)) {
       return view
     }
     if (window.location.pathname === '/apuracao') return 'apuracao'
@@ -318,6 +319,8 @@ function App() {
         return <Apuracao onBackToVote={() => navigateTo('voting')} />
       case 'cadastro':
         return <CadastroEleicao onBack={() => navigateTo('apuracao')} />
+      case 'escalas':
+        return <EscalasManager />
       case 'dashboards':
         return <FinanceiroManager initialTab="dashboard" navigateTo={navigateTo} />
       case 'analitico':
@@ -986,6 +989,15 @@ function App() {
             >
               <Users className="h-5 w-5 text-emerald-700" />
               Organograma
+            </button>
+            <button
+              onClick={() => navigateTo('escalas')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                currentView === 'escalas' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <CalendarRange className="h-5 w-5 text-emerald-700" />
+              Escalas de Culto
             </button>
           </div>
 
