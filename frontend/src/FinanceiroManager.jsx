@@ -340,6 +340,23 @@ export default function FinanceiroManager({ initialTab, navigateTo }) {
   // Handle Close Competence (Monthly or Annual)
   const handleEncerrarCompetencia = async () => {
     setShowFechamentoConfirmModal(false)
+
+    // Validar fechamento anual no frontend para uma melhor experiência do usuário (UX)
+    if (selectedMes === 0) {
+      const mesesFaltando = []
+      for (let m = 1; m <= 12; m++) {
+        const fechado = fechamentosList.some(f => f.ano === selectedAno && f.mes === m)
+        if (!fechado) {
+          const nomeMes = meses.find(x => x.value === m)?.label || `Mês ${m}`
+          mesesFaltando.push(nomeMes)
+        }
+      }
+      if (mesesFaltando.length > 0) {
+        alert(`Não é permitido encerrar o ano de ${selectedAno} porque existem meses em aberto: ${mesesFaltando.join(', ')}.`)
+        return
+      }
+    }
+
     setLoading(true)
 
     try {
@@ -354,7 +371,7 @@ export default function FinanceiroManager({ initialTab, navigateTo }) {
         fetchDashboardAndExtrato()
       } else {
         const errObj = await res.json()
-        alert(errObj.detail || 'Erro ao fechar competência.')
+        alert(errObj.detail || errObj.message || 'Erro ao fechar competência.')
       }
     } catch (err) {
       alert('Falha na comunicação com o servidor.')

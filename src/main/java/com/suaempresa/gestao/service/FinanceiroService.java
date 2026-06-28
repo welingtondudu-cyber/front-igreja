@@ -152,6 +152,14 @@ public class FinanceiroService {
 
         if (mes == 0) {
             // Fechamento Anual
+            // Validar que todos os 12 meses do ano de 1 a 12 estão fechados
+            for (int m = 1; m <= 12; m++) {
+                Optional<FechamentoMensal> fechamentoMes = fechamentoMensalRepository.findByAnoAndMes(ano, m);
+                if (fechamentoMes.isEmpty()) {
+                    throw new RegraNegocioException("Não é permitido encerrar o ano de " + ano + " porque o mês de " + obterNomeMes(m) + " não está encerrado.");
+                }
+            }
+
             dataInicio = LocalDate.of(ano, 1, 1);
             dataFim = LocalDate.of(ano, 12, 31);
 
@@ -603,5 +611,11 @@ public class FinanceiroService {
             f.getUsuarioId(),
             true // Qualquer fechamento registrado na base indica competência trancada
         );
+    }
+
+    private String obterNomeMes(int mes) {
+        String[] meses = {"", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"};
+        if (mes >= 1 && mes <= 12) return meses[mes];
+        return String.valueOf(mes);
     }
 }
