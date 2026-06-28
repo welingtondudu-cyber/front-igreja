@@ -766,20 +766,6 @@ export default function FinanceiroManager({ initialTab }) {
           </div>
         </div>
 
-        {/* Audit Signatures on Dashboard Print (Equal to Report) */}
-        <div className="hidden print:grid grid-cols-2 gap-12 text-center pt-8 mt-4 border-t border-slate-200/50 select-none">
-          <div className="space-y-1">
-            <div className="w-4/5 mx-auto border-t border-slate-400"></div>
-            <span className="text-[10px] font-bold text-slate-700 block mt-1">Assinatura do Tesoureiro</span>
-            <span className="text-[8px] text-slate-400 uppercase tracking-widest block font-semibold">Igreja Presbiteriana do Ipês</span>
-          </div>
-          <div className="space-y-1">
-            <div className="w-4/5 mx-auto border-t border-slate-400"></div>
-            <span className="text-[10px] font-bold text-slate-700 block mt-1">Assinatura do Presidente do Conselho</span>
-            <span className="text-[8px] text-slate-400 uppercase tracking-widest block font-semibold">Pastor Regente Titular</span>
-          </div>
-        </div>
-
         {/* Print button on Dashboard */}
         <div className="print:hidden flex justify-end">
           <button
@@ -1010,20 +996,21 @@ export default function FinanceiroManager({ initialTab }) {
               transform-origin: top left;
               width: 105% !important;
             }
-            .grid {
+            #secao-imprimivel .grid {
               display: grid !important;
             }
-            .grid-cols-2 {
-              grid-template-cols: repeat(2, minmax(0, 1fr)) !important;
+            #secao-imprimivel .grid-cols-2,
+            #secao-imprimivel .print-grid {
+              grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
             }
-            .lg\\:grid-cols-4 {
-              grid-template-cols: repeat(4, minmax(0, 1fr)) !important;
+            #secao-imprimivel .grid-cols-1 {
+              grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
             }
-            .lg\\:col-span-2 {
+            #secao-imprimivel .lg\\:col-span-2 {
               grid-column: span 2 / span 2 !important;
             }
-            .sm\\:grid-cols-2 {
-              grid-template-cols: repeat(2, minmax(0, 1fr)) !important;
+            #secao-imprimivel .lg\\:col-span-2 .grid {
+              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
             }
           ` : ''}
           
