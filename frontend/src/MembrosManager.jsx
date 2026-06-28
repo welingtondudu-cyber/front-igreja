@@ -21,6 +21,19 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
+  // Sorting State
+  const [sortField, setSortField] = useState('nomeCompleto')
+  const [sortDirection, setSortDirection] = useState('asc')
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }
+
   // Filters State
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [filterNome, setFilterNome] = useState('')
@@ -814,18 +827,54 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 text-slate-400 text-xs font-semibold uppercase tracking-wider border-b border-slate-100">
-                  <th className="px-6 py-4">Matrícula</th>
-                  <th className="px-6 py-4">Nome</th>
-                  <th className="px-6 py-4">Cargo / Função</th>
-                  <th className="px-6 py-4">Status</th>
+                <tr className="bg-slate-50 text-slate-400 text-xs font-semibold uppercase tracking-wider border-b border-slate-100 select-none">
+                  <th onClick={() => handleSort('matricula')} className="px-6 py-4 cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors">
+                    <span className="flex items-center gap-1">
+                      Matrícula {sortField === 'matricula' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </span>
+                  </th>
+                  <th onClick={() => handleSort('nomeCompleto')} className="px-6 py-4 cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors">
+                    <span className="flex items-center gap-1">
+                      Nome {sortField === 'nomeCompleto' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </span>
+                  </th>
+                  <th onClick={() => handleSort('tituloCargo')} className="px-6 py-4 cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors">
+                    <span className="flex items-center gap-1">
+                      Cargo / Função {sortField === 'tituloCargo' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </span>
+                  </th>
+                  <th onClick={() => handleSort('statusCadastro')} className="px-6 py-4 cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors">
+                    <span className="flex items-center gap-1">
+                      Status {sortField === 'statusCadastro' && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </span>
+                  </th>
                   <th className="px-6 py-4 text-center">Contato</th>
                   <th className="px-6 py-4 text-center">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
-                {members.map((member) => (
-                  <tr key={member.matricula} className="hover:bg-slate-50/55 transition-colors">
+                {(() => {
+                  const sortedMembers = [...members].sort((a, b) => {
+                    let aVal = a[sortField] || ''
+                    let bVal = b[sortField] || ''
+
+                    if (typeof aVal === 'string') {
+                      aVal = aVal.toLowerCase()
+                      bVal = bVal.toLowerCase()
+                    }
+
+                    if (sortField === 'matricula') {
+                      aVal = Number(aVal)
+                      bVal = Number(bVal)
+                    }
+
+                    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
+                    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
+                    return 0
+                  })
+
+                  return sortedMembers.map((member) => (
+                    <tr key={member.matricula} className="hover:bg-slate-50/55 transition-colors">
                     <td className="px-6 py-4 font-mono font-semibold text-slate-500">
                       {member.matricula}
                     </td>
@@ -887,7 +936,7 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
                       </div>
                     </td>
                   </tr>
-                ))}
+                ))})()}
               </tbody>
             </table>
 
@@ -981,7 +1030,9 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
                   <p className="flex items-center gap-2"><Hash className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">CPF:</span> {selectedMember.cpf ? formatCPF(selectedMember.cpf) : 'Não informado'}</p>
                 </div>
 
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1 mt-4">Contato</h4>
+                <div className="pt-4">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">Contato</h4>
+                </div>
                 <div className="space-y-2 text-sm text-slate-700">
                   <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">WhatsApp:</span> {selectedMember.whatsapp ? formatWhatsapp(selectedMember.whatsapp) : 'Não informado'}</p>
                   <p className="flex items-center gap-2"><Mail className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">E-mail:</span> {selectedMember.email || 'Não informado'}</p>
@@ -996,7 +1047,9 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
                   <p className="flex items-center gap-2"><Calendar className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">Adesão:</span> {selectedMember.dataAdesao ? formatDate(selectedMember.dataAdesao) : 'Não cadastrada'}</p>
                 </div>
 
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1 mt-4">Vínculos de Grupos</h4>
+                <div className="pt-4">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">Vínculos de Grupos</h4>
+                </div>
                 <div className="space-y-2">
                   <div>
                     <span className="text-xs font-bold text-slate-500 block mb-1">Ministérios:</span>

@@ -37,6 +37,19 @@ export default function FinanceiroManager({ initialTab, navigateTo }) {
     localStorage.setItem('fin_selectedMes', selectedMes)
   }, [selectedMes])
 
+  // Sorting State
+  const [sortField, setSortField] = useState('data')
+  const [sortDirection, setSortDirection] = useState('desc')
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }
+
   // Data States
   const [dashboardData, setDashboardData] = useState(null)
   const [extratoData, setExtratoData] = useState([])
@@ -925,18 +938,62 @@ export default function FinanceiroManager({ initialTab, navigateTo }) {
                         />
                       </th>
                     )}
-                    <th className="px-6 py-4">Data</th>
-                    <th className="px-6 py-4">Descrição</th>
-                    <th className="px-6 py-4">Categoria</th>
-                    <th className="px-6 py-4">Fluxo</th>
-                    <th className="px-6 py-4">Valor</th>
-                    <th className="px-6 py-4">Contribuinte</th>
+                    <th onClick={() => handleSort('data')} className="px-6 py-4 cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors">
+                      <span className="flex items-center gap-1">
+                        Data {sortField === 'data' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </span>
+                    </th>
+                    <th onClick={() => handleSort('descricao')} className="px-6 py-4 cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors">
+                      <span className="flex items-center gap-1">
+                        Descrição {sortField === 'descricao' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </span>
+                    </th>
+                    <th onClick={() => handleSort('nomeCategoria')} className="px-6 py-4 cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors">
+                      <span className="flex items-center gap-1">
+                        Categoria {sortField === 'nomeCategoria' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </span>
+                    </th>
+                    <th onClick={() => handleSort('tipoFluxo')} className="px-6 py-4 cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors">
+                      <span className="flex items-center gap-1">
+                        Fluxo {sortField === 'tipoFluxo' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </span>
+                    </th>
+                    <th onClick={() => handleSort('valor')} className="px-6 py-4 cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors">
+                      <span className="flex items-center gap-1">
+                        Valor {sortField === 'valor' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </span>
+                    </th>
+                    <th onClick={() => handleSort('nomeMembroDizimista')} className="px-6 py-4 cursor-pointer hover:bg-slate-100 hover:text-slate-700 transition-colors">
+                      <span className="flex items-center gap-1">
+                        Contribuinte {sortField === 'nomeMembroDizimista' && (sortDirection === 'asc' ? '▲' : '▼')}
+                      </span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
                   {extratoData.length > 0 ? (
-                    extratoData.map((row) => (
-                      <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
+                    (() => {
+                      const sortedExtratoData = [...extratoData].sort((a, b) => {
+                        let aVal = a[sortField] || ''
+                        let bVal = b[sortField] || ''
+
+                        if (typeof aVal === 'string') {
+                          aVal = aVal.toLowerCase()
+                          bVal = bVal.toLowerCase()
+                        }
+
+                        if (sortField === 'valor') {
+                          aVal = Number(aVal)
+                          bVal = Number(bVal)
+                        }
+
+                        if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
+                        if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
+                        return 0
+                      })
+
+                      return sortedExtratoData.map((row) => (
+                        <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
                         {!trancado && (
                           <td className="px-6 py-4 text-center">
                             <input
@@ -970,7 +1027,7 @@ export default function FinanceiroManager({ initialTab, navigateTo }) {
                           {row.nomeMembroDizimista || '-'}
                         </td>
                       </tr>
-                    ))
+                    ))})()
                   ) : (
                     <tr>
                       <td colSpan={trancado ? 6 : 7} className="px-6 py-12 text-center text-slate-400">
