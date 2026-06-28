@@ -642,7 +642,7 @@ export default function FinanceiroManager({ initialTab, navigateTo }) {
           <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider print:text-[9px]">Histórico de Entradas vs Saídas ({selectedAno})</h3>
         </div>
         <div className="flex gap-4 pt-2 print:pt-1 select-none">
-          <div className="flex flex-col justify-between text-[9px] text-slate-400 h-44 pb-6 print:h-24 print:pb-4 font-mono shrink-0 w-14 text-right">
+          <div className="flex flex-col justify-between text-[10px] sm:text-xs font-bold text-slate-500 h-44 pb-6 print:h-24 print:pb-4 font-mono shrink-0 w-18 text-right print:text-[7px]">
             <span className="print:hidden">{formatBRL(maxValHistorico)}</span>
             <span className="print:hidden">{formatBRL(maxValHistorico * 0.5)}</span>
             <span className="hidden print:block">{formatCompact(maxValHistorico)}</span>
@@ -712,7 +712,7 @@ export default function FinanceiroManager({ initialTab, navigateTo }) {
 
         {/* Cabeçalho de Impressão: logo à esquerda, título menor centralizado, competência à direita */}
         <div className="hidden print:flex items-center justify-between border-b border-slate-300 pb-4 mb-2 select-none">
-          <img src="/logo.png" alt="Logo da Igreja" className="w-24 h-24 object-contain shrink-0" />
+          <img src="/logo.png" alt="Logo da Igreja" className="w-32 h-32 object-contain shrink-0" />
           <div className="flex-1 text-center px-4">
             <h2 className="text-base font-extrabold text-slate-900 uppercase tracking-wide">Dashboards Financeiros Consolidado</h2>
           </div>
