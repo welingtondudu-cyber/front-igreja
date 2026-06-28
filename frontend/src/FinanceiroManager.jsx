@@ -385,8 +385,26 @@ export default function FinanceiroManager({ initialTab }) {
     }
   }
 
-  const triggerDashboardPrint = () => {
+  const handlePrint = (tipo) => {
+    const originalTitle = document.title
+    const mesLabel = selectedMes === 0 ? 'Anual' : String(selectedMes).padStart(2, '0')
+    const periodo = `${mesLabel}-${selectedAno}`
+    
+    if (tipo === 'dashboard') {
+      document.title = `dashboard financeiro ${periodo}`
+    } else {
+      document.title = `relatorio auditoria ${periodo}`
+    }
+    
     window.print()
+    
+    setTimeout(() => {
+      document.title = originalTitle
+    }, 1000)
+  }
+
+  const triggerDashboardPrint = () => {
+    handlePrint('dashboard')
   }
 
   const Long = (val) => {
@@ -589,17 +607,17 @@ export default function FinanceiroManager({ initialTab }) {
     }, 1000)
 
     const getBarHeightPercent = (val) => {
-      if (!val) return '0%'
+      if (!val || val <= 0) return '0%'
       const pct = (val / maxValHistorico) * 85
       return `${Math.max(5, pct)}%`
     }
 
     const formatCompact = (val) => {
-      if (val === 0) return 'R$ 0'
+      if (!val || val <= 0) return ''
       if (val >= 1000) {
-        return `R$ ${(val / 1000).toFixed(1)}K`.replace('.', ',')
+        return `R$ ${(val / 1000).toFixed(1)}K`.replace('.', ',').replace(',0K', 'K')
       }
-      return formatBRL(val)
+      return `R$ ${Math.round(val)}`
     }
 
     return (
@@ -1494,7 +1512,7 @@ export default function FinanceiroManager({ initialTab }) {
               </span>
               <div className="flex gap-2">
                 <button
-                  onClick={() => window.print()}
+                  onClick={() => handlePrint('relatorio')}
                   className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
                 >
                   <Printer className="h-4 w-4" />
