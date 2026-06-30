@@ -15,11 +15,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/grupos")
 @RequiredArgsConstructor
-@Tag(name = "Grupos", description = "API para gestão e vinculação de grupos da igreja (ex: Ministérios, Pequenos Grupos)")
+@Tag(name = "Grupos", description = "API para gestão e vinculação de grupos da igreja (ex: Ministérios, Sociedades Internas)")
 public class GrupoController {
 
     private final GrupoService grupoService;
@@ -27,7 +28,7 @@ public class GrupoController {
     @GetMapping
     @Operation(summary = "Listar grupos", description = "Retorna todos os grupos cadastrados, com opção de filtrar por tipo de grupo.")
     public ResponseEntity<List<GrupoDTO>> listarGrupos(
-            @Parameter(description = "Tipo de grupo para filtro (ex: MINISTERIO, PEQUENO_GRUPO)")
+            @Parameter(description = "Tipo de grupo para filtro (ex: MINISTERIO, SOCIEDADES_INTERNAS, PEQUENO_GRUPO)")
             @RequestParam(value = "tipo", required = false) TipoGrupo tipo
     ) {
         return ResponseEntity.ok(grupoService.listarGrupos(tipo));
@@ -69,6 +70,14 @@ public class GrupoController {
         Long membroId = parseMatriculaToId(matriculaMembro);
         grupoService.desvincularMembro(grupoId, membroId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{grupoId}/membros-disponiveis")
+    @Operation(summary = "Listar membros de um grupo", description = "Retorna os membros vinculados a um grupo específico para uso na alocação de escalas.")
+    public ResponseEntity<List<Map<String, Object>>> listarMembrosDoGrupo(
+            @Parameter(description = "ID do grupo", required = true) @PathVariable Long grupoId
+    ) {
+        return ResponseEntity.ok(grupoService.listarMembrosDoGrupo(grupoId));
     }
 
     private Long parseMatriculaToId(String matricula) {

@@ -57,10 +57,11 @@ public class VotacaoService {
             throw new MembroNaoElegivelException("Ano de nascimento informado diverge do cadastro.");
         }
 
-        // Validação de Maioridade (18 anos em relação à data atual)
-        java.time.LocalDate limiteIdade = java.time.LocalDate.now().minusYears(18);
-        if (membro.getDataNascimento() == null || membro.getDataNascimento().isAfter(limiteIdade)) {
-            throw new MembroMenorDeIdadeException("Menores de idade não possuem direito a voto nesta assembleia");
+        // Validação de Idade Limite
+        int idadeMinima = votacao.getIdadeLimite() != null ? votacao.getIdadeLimite() : 18;
+        java.time.LocalDate dataLimiteIdade = java.time.LocalDate.now().minusYears(idadeMinima);
+        if (membro.getDataNascimento() == null || membro.getDataNascimento().isAfter(dataLimiteIdade)) {
+            throw new MembroMenorDeIdadeException("Membros com idade inferior a " + idadeMinima + " anos não possuem direito a voto nesta assembleia");
         }
 
         // Verificar Restrição
@@ -157,7 +158,8 @@ public class VotacaoService {
         if (Boolean.FALSE.equals(votacao.getAtiva()) && votacao.getTotalAptosHistorico() != null) {
             totalAptos = votacao.getTotalAptosHistorico();
         } else {
-            totalAptos = membroRepository.countMembrosAptosParaVotar(votacaoId, java.time.LocalDate.now().minusYears(18));
+            int idadeMinima = votacao.getIdadeLimite() != null ? votacao.getIdadeLimite() : 18;
+            totalAptos = membroRepository.countMembrosAptosParaVotar(votacaoId, java.time.LocalDate.now().minusYears(idadeMinima));
         }
 
         // 2. Calcular totalVotaram
@@ -199,7 +201,8 @@ public class VotacaoService {
         Votacao votacao = votacaoRepository.findById(votacaoId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Votação não encontrada"));
 
-        long quorum = membroRepository.countMembrosAptosParaVotar(votacaoId, java.time.LocalDate.now().minusYears(18));
+        int idadeMinima = votacao.getIdadeLimite() != null ? votacao.getIdadeLimite() : 18;
+        long quorum = membroRepository.countMembrosAptosParaVotar(votacaoId, java.time.LocalDate.now().minusYears(idadeMinima));
 
         votacao.setTotalAptosHistorico(quorum);
         votacao.setAtiva(false);
@@ -214,6 +217,7 @@ public class VotacaoService {
                 .titulo(request.titulo())
                 .descricao(request.descricao())
                 .limiteVotos(request.limiteVotos())
+                .idadeLimite(request.idadeLimite() != null ? request.idadeLimite() : 18)
                 .ativa(true)
                 .dataCriacao(LocalDateTime.now())
                 .build();
@@ -360,7 +364,7 @@ public class VotacaoService {
     @Transactional(readOnly = true)
     public List<VotacaoAdminDTO> listarTodasParaAdmin() {
         return votacaoRepository.findAll().stream()
-                .map(v -> new VotacaoAdminDTO(v.getId(), v.getTitulo(), v.getAtiva() != null && v.getAtiva()))
+                .map(v -> new VotacaoAdminDTO(v.getId(), v.getTitulo(), v.getAtiva() != null && v.getAtiva(), v.getDataCriacao(), v.getIdadeLimite() != null ? v.getIdadeLimite() : 18, v.getDataEncerramento()))
                 .toList();
     }
 }

@@ -1,0 +1,31 @@
+- [x] Ajustar Sidebar: Nomenclaturas "Gestão de Eleições", "Gestão de Membros" e "Culto, Evento e Escala"
+- [x] Ajustar RestricoesManager.jsx: remover combobox de eleição redundante (substituída por leitura em read-only) e remover botão textual "Voltar"
+- [x] Ajustar Apuracao.jsx: remover combobox de eleição, substituir por badge com nome da eleição
+- [x] Ajustar EleicoesManager.jsx: salvar o ID da eleição no localStorage ao clicar em "Apuração"
+- [x] Adicionar SOCIEDADES_INTERNAS ao enum TipoGrupo.java no backend
+- [x] Atualizar MembroDetalhadoDTO.java para incluir SOCIEDADES_INTERNAS no bucket de pequenosGrupos
+- [x] Atualizar MembroService.java CSV export para incluir SOCIEDADES_INTERNAS
+- [x] Adicionar findByGrupoIdWithMembro ao MembroGrupoRepository.java (query otimizada com JOIN FETCH)
+- [x] Adicionar listarMembrosDoGrupo ao GrupoService.java
+- [x] Adicionar endpoint GET /api/grupos/{grupoId}/membros-disponiveis no GrupoController.java
+- [x] Atualizar MembrosManager.jsx com a nova nomenclatura visual "Sociedade Interna"
+- [x] Atualizar EscalasManager.jsx:
+  - [x] Nomenclatura do título para "Culto, Evento e Escala"
+  - [x] Minhas Escalas em 3 cards por linha (lg:grid-cols-3)
+  - [x] Remover tags "Módulo de Escalas" e "Integração Ativa"
+  - [x] Ajustar altura dos botões seletores e botão "+"
+  - [x] Nome do modal de cadastro para "Culto / Evento" e botão para "Salvar"
+  - [x] Checkboxes de ministérios requeridos listarem grupos (MINISTERIO + SOCIEDADES_INTERNAS)
+  - [x] handleSelectCargoId: buscar membros do grupo (/api/grupos/{id}/membros-disponiveis)
+  - [x] Dropdown de voluntários usa membrosDoGrupo (filtrado) quando disponível
+  - [x] Seleção de membro primeiro, e depois botão "Adicionar"
+  - [x] Exibição estática do nome do membro alocado na escala
+  - [x] Destaque de cor nas bordas de cards de cultos/escalas baseados em status (CONFIRMADO, PENDENTE, RECUSADO)
+  - [x] Lista vertical de equipes nos cards e gaveta expandível "Ver Escala" para listar membros
+  - [x] Botão para editar informações do culto ( lápis ) abrindo modal preenchido (PUT request)
+- [x] Adicionar seleção e upload de arquivos locais (Base64) em Membros, Notícias e Estudos Bíblicos
+- [x] Redimensionar colunas do banco de dados (fotoPerfilUrl, imagemUrl) para o tipo TEXT
+- [x] Corrigir crash de carregamento do modal de estudos (membros paginados)
+- [x] Implementar onPaste no editor de aulas para converter capturas de tela/clipboard em tags Markdown
+- [x] Build do frontend (vite build) passou com sucesso ✅
+- [x] Build e compilação do backend (mvn clean compile) passou com sucesso ✅

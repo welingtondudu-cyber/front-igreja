@@ -33,6 +33,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.suaempresa.gestao.domain.entity.MembroHistorico;
+import com.suaempresa.gestao.repository.MembroHistoricoRepository;
+
 @Service
 @RequiredArgsConstructor
 public class MembroService {
@@ -41,6 +44,7 @@ public class MembroService {
     private final CargoRepository cargoRepository;
     private final GrupoRepository grupoRepository;
     private final MembroGrupoRepository membroGrupoRepository;
+    private final MembroHistoricoRepository membroHistoricoRepository;
 
     // ─── LISTAR COM FILTROS + PAGINAÇÃO ────────────────────────────────────────
 
@@ -112,6 +116,39 @@ public class MembroService {
                 throw new RegraNegocioException("Já existe outro membro cadastrado com este CPF.");
             }
         }
+        // Comparar e auditar alterações antes de alterar na entidade
+        if (dto.nomeCompleto() != null) {
+            registrarHistorico(membro, "Nome Completo", membro.getNomeCompleto(), dto.nomeCompleto());
+        }
+        if (dto.whatsapp() != null) {
+            registrarHistorico(membro, "WhatsApp", membro.getWhatsapp(), dto.whatsapp());
+        }
+        if (dto.email() != null) {
+            registrarHistorico(membro, "E-mail", membro.getEmail(), dto.email());
+        }
+        if (dto.statusCadastro() != null) {
+            registrarHistorico(membro, "Status", membro.getStatusCadastro(), dto.statusCadastro());
+        }
+        if (dto.cpf() != null) {
+            String oldCpf = membro.getCpf() != null ? membro.getCpf().replaceAll("\\D", "") : "";
+            String newCpf = dto.cpf().replaceAll("\\D", "");
+            registrarHistorico(membro, "CPF", oldCpf, newCpf);
+        }
+        if (dto.rg() != null) {
+            registrarHistorico(membro, "RG", membro.getRg(), dto.rg());
+        }
+        if (dto.dataAdesao() != null) {
+            String oldAdesao = membro.getDataAdesao() != null ? membro.getDataAdesao().toString() : "";
+            registrarHistorico(membro, "Data de Adesão", oldAdesao, dto.dataAdesao().toString());
+        }
+        if (dto.dataNascimento() != null) {
+            String oldNascimento = membro.getDataNascimento() != null ? membro.getDataNascimento().toString() : "";
+            registrarHistorico(membro, "Data de Nascimento", oldNascimento, dto.dataNascimento().toString());
+        }
+        if (dto.sexo() != null) {
+            registrarHistorico(membro, "Sexo", membro.getSexo(), dto.sexo());
+        }
+
         atualizarDadosEntidade(membro, dto);
         try {
             membroRepository.saveAndFlush(membro);
@@ -156,7 +193,9 @@ public class MembroService {
                     if (mg.getGrupo() != null) {
                         if (mg.getGrupo().getTipoGrupo() == TipoGrupo.MINISTERIO) {
                             ministeriosList.add(mg.getGrupo().getNomeGrupo());
-                        } else if (mg.getGrupo().getTipoGrupo() == TipoGrupo.PEQUENO_GRUPO) {
+                        } else if (mg.getGrupo().getTipoGrupo() == TipoGrupo.PEQUENO_GRUPO
+                                || mg.getGrupo().getTipoGrupo() == TipoGrupo.SOCIEDADE_INTERNA
+                                || mg.getGrupo().getTipoGrupo() == TipoGrupo.SOCIEDADES_INTERNAS) {
                             pequenosGruposList.add(mg.getGrupo().getNomeGrupo());
                         }
                     }
@@ -305,6 +344,9 @@ public class MembroService {
             String cpfLimpo = dto.cpf().replaceAll("\\D", "");
             membro.setCpf(cpfLimpo.isBlank() ? null : cpfLimpo);
         }
+        if (dto.rg() != null) {
+            membro.setRg(dto.rg().trim());
+        }
         if (dto.observacao() != null) {
             membro.setObservacao(dto.observacao());
         }
@@ -397,5 +439,27 @@ public class MembroService {
                     .build();
             membroGrupoRepository.save(vinculo);
         }
+    }
+
+    @Transactional
+    public void registrarHistorico(Membro membro, String campo, String valorAntigo, String valorNovo) {
+        String antigo = valorAntigo == null ? "" : valorAntigo.trim();
+        String novo = valorNovo == null ? "" : valorNovo.trim();
+        if (antigo.equals(novo)) return;
+
+        MembroHistorico hist = MembroHistorico.builder()
+                .membro(membro)
+                .campoAlterado(campo)
+                .valorAntigo(antigo.isEmpty() ? "Não informado" : antigo)
+                .valorNovo(novo.isEmpty() ? "Não informado" : novo)
+                .dataAlteracao(java.time.LocalDateTime.now())
+                .usuarioId(1L) // Administrador Padrão
+                .build();
+        membroHistoricoRepository.save(hist);
+    }
+
+    @Transactional(readOnly = true)
+    public List<MembroHistorico> obterHistoricoMembro(Long membroId) {
+        return membroHistoricoRepository.findByMembroIdOrderByDataAlteracaoDesc(membroId);
     }
 }

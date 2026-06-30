@@ -19,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -120,6 +121,25 @@ public class GrupoService {
         List<Grupo> grupos = membroGrupoRepository.findGruposByMembroId(membroId);
         return grupos.stream()
                 .map(MembroGrupoDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> listarMembrosDoGrupo(Long grupoId) {
+        if (!grupoRepository.existsById(grupoId)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.NOT_FOUND, "Grupo não encontrado");
+        }
+        return membroGrupoRepository.findByGrupoIdWithMembro(grupoId).stream()
+                .filter(mg -> mg.getMembro() != null)
+                .map(mg -> {
+                    Map<String, Object> item = new java.util.LinkedHashMap<>();
+                    item.put("id", mg.getMembro().getId());
+                    item.put("nomeCompleto", mg.getMembro().getNomeCompleto());
+                    item.put("tituloCargo", mg.getMembro().getCargo() != null ? mg.getMembro().getCargo().getTitulo() : "Membro");
+                    item.put("cargoId", mg.getMembro().getCargo() != null ? mg.getMembro().getCargo().getId() : null);
+                    return item;
+                })
                 .collect(Collectors.toList());
     }
 }

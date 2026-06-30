@@ -24,7 +24,7 @@ public class Membro {
     
     private String email;
 
-    @Column(name = "foto_perfil_url")
+    @Column(name = "foto_perfil_url", columnDefinition = "TEXT")
     private String fotoPerfilUrl;
 
     @Column(name = "status_cadastro")
@@ -40,6 +40,8 @@ public class Membro {
 
     @Column(name = "cpf", unique = true)
     private String cpf;
+
+    private String rg;
 
     @Column(name = "observacao", length = 1000)
     private String observacao;

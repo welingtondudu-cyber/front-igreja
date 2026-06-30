@@ -19,4 +19,7 @@ public interface MembroGrupoRepository extends JpaRepository<MembroGrupo, Long> 
     boolean existsByGrupoIdAndMembroId(Long grupoId, Long membroId);
 
     void deleteByMembroId(Long membroId);
+
+    @Query("SELECT mg FROM MembroGrupo mg JOIN FETCH mg.membro m LEFT JOIN FETCH m.cargo WHERE mg.grupo.id = :grupoId")
+    List<MembroGrupo> findByGrupoIdWithMembro(@Param("grupoId") Long grupoId);
 }

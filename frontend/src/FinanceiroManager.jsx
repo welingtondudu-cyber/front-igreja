@@ -493,23 +493,25 @@ export default function FinanceiroManager({ initialTab, navigateTo }) {
 
   const renderSelectorPeriodo = () => {
     return (
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm">
-          <Calendar className="h-4 w-4 text-emerald-700 shrink-0" />
-          <select
-            value={selectedMes}
-            onChange={(e) => setSelectedMes(parseInt(e.target.value))}
-            className="bg-transparent font-bold text-slate-800 text-sm focus:outline-none border-none cursor-pointer"
-          >
-            {meses.map(m => (
-              <option key={m.value} value={m.value}>{m.label}</option>
-            ))}
-          </select>
-          <div className="w-[1px] h-4 bg-slate-200"></div>
+      <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center justify-between gap-2 bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm w-full sm:w-auto">
+          <div className="flex items-center gap-2 flex-grow">
+            <Calendar className="h-4 w-4 text-emerald-700 shrink-0" />
+            <select
+              value={selectedMes}
+              onChange={(e) => setSelectedMes(parseInt(e.target.value))}
+              className="bg-transparent font-bold text-slate-800 text-sm focus:outline-none border-none cursor-pointer w-full"
+            >
+              {meses.map(m => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="w-[1px] h-4 bg-slate-200 shrink-0"></div>
           <select
             value={selectedAno}
             onChange={(e) => setSelectedAno(parseInt(e.target.value))}
-            className="bg-transparent font-bold text-slate-800 text-sm focus:outline-none border-none cursor-pointer"
+            className="bg-transparent font-bold text-slate-800 text-sm focus:outline-none border-none cursor-pointer shrink-0"
           >
             {(() => {
               const anoAtual = new Date().getFullYear()
@@ -524,7 +526,7 @@ export default function FinanceiroManager({ initialTab, navigateTo }) {
           <button
             onClick={() => setShowHistoricoModal(true)}
             title="Ver Histórico de Auditoria e Fechamentos"
-            className="p-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-400 hover:text-slate-600 rounded-xl shadow-sm transition-all"
+            className="p-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-400 hover:text-slate-600 rounded-xl shadow-sm transition-all shrink-0"
           >
             <History className="h-4 w-4" />
           </button>
@@ -562,7 +564,7 @@ export default function FinanceiroManager({ initialTab, navigateTo }) {
     const totalMembrosAtivos = dashboardData.totalMembrosAtivos
 
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 print-grid">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 print-grid">
         {/* Receitas */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm print:border-slate-300 print:p-4">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block print:text-[9px]">Receitas Consolidadas</span>
@@ -671,56 +673,58 @@ export default function FinanceiroManager({ initialTab, navigateTo }) {
         <div className="border-b border-slate-100 pb-3 print:pb-1.5 print:border-slate-200">
           <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider print:text-[9px]">Histórico de Entradas vs Saídas ({selectedAno})</h3>
         </div>
-        <div className="flex gap-4 pt-2 print:pt-1 select-none">
-          <div className="flex flex-col justify-between text-[10px] sm:text-xs font-bold text-slate-500 h-44 pb-6 print:h-24 print:pb-4 font-mono shrink-0 w-18 text-right print:text-[7px]">
-            <span className="print:hidden">{formatBRL(maxValHistorico)}</span>
-            <span className="print:hidden">{formatBRL(maxValHistorico * 0.5)}</span>
-            <span className="hidden print:block">{formatCompact(maxValHistorico)}</span>
-            <span className="hidden print:block">{formatCompact(maxValHistorico * 0.5)}</span>
-            <span>R$ 0</span>
-          </div>
-          <div className="flex-grow relative h-44 print:h-24 border-b border-l border-slate-200 print:border-slate-300">
-            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-              <div className="w-full border-t border-slate-100 print:border-slate-200"></div>
-              <div className="w-full border-t border-slate-100 print:border-slate-200"></div>
-              <div className="w-full"></div>
+        <div className="overflow-x-auto -mx-6 px-6 scrollbar-thin">
+          <div className="min-w-[460px] flex gap-4 pt-2 print:pt-1 select-none">
+            <div className="flex flex-col justify-between text-[10px] sm:text-xs font-bold text-slate-500 h-44 pb-6 print:h-24 print:pb-4 font-mono shrink-0 w-18 text-right print:text-[7px]">
+              <span className="print:hidden">{formatBRL(maxValHistorico)}</span>
+              <span className="print:hidden">{formatBRL(maxValHistorico * 0.5)}</span>
+              <span className="hidden print:block">{formatCompact(maxValHistorico)}</span>
+              <span className="hidden print:block">{formatCompact(maxValHistorico * 0.5)}</span>
+              <span>R$ 0</span>
             </div>
-            <div className="absolute inset-0 flex items-end px-1" style={{ justifyContent: 'space-around' }}>
-              {todosMeses12.map((f, idx) => (
-                <div key={idx} className="flex flex-col items-center gap-1 flex-1 relative">
-                  <div className="flex items-end gap-1 h-32 print:h-20">
-                    <div
-                      className="bg-emerald-600 w-3 sm:w-5 rounded-t transition-all hover:bg-emerald-500 relative group"
-                      style={{ height: getBarHeightPercent(f.entradasDoMes) }}
-                    >
-                      {f.entradasDoMes > 0 && (
-                        <span className="hidden print:block absolute bottom-full left-1/2 -translate-x-1/2 mb-0.5 text-[6px] font-bold text-emerald-800 whitespace-nowrap">
-                          {formatCompact(f.entradasDoMes)}
-                        </span>
-                      )}
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] font-mono py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
-                        {formatBRL(f.entradasDoMes)}
+            <div className="flex-grow relative h-44 print:h-24 border-b border-l border-slate-200 print:border-slate-300">
+              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                <div className="w-full border-t border-slate-100 print:border-slate-200"></div>
+                <div className="w-full border-t border-slate-100 print:border-slate-200"></div>
+                <div className="w-full"></div>
+              </div>
+              <div className="absolute inset-0 flex items-end px-1" style={{ justifyContent: 'space-around' }}>
+                {todosMeses12.map((f, idx) => (
+                  <div key={idx} className="flex flex-col items-center gap-1 flex-1 relative">
+                    <div className="flex items-end gap-1 h-32 print:h-20">
+                      <div
+                        className="bg-emerald-600 w-3 sm:w-5 rounded-t transition-all hover:bg-emerald-500 relative group"
+                        style={{ height: getBarHeightPercent(f.entradasDoMes) }}
+                      >
+                        {f.entradasDoMes > 0 && (
+                          <span className="hidden print:block absolute bottom-full left-1/2 -translate-x-1/2 mb-0.5 text-[6px] font-bold text-emerald-800 whitespace-nowrap">
+                            {formatCompact(f.entradasDoMes)}
+                          </span>
+                        )}
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] font-mono py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+                          {formatBRL(f.entradasDoMes)}
+                        </div>
+                      </div>
+                      <div
+                        className="bg-amber-500 w-3 sm:w-5 rounded-t transition-all hover:bg-amber-400 relative group"
+                        style={{ height: getBarHeightPercent(f.saidasDoMes) }}
+                      >
+                        {f.saidasDoMes > 0 && (
+                          <span className="hidden print:block absolute bottom-full left-1/2 -translate-x-1/2 mb-0.5 text-[6px] font-bold text-amber-700 whitespace-nowrap">
+                            {formatCompact(f.saidasDoMes)}
+                          </span>
+                        )}
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] font-mono py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+                          {formatBRL(f.saidasDoMes)}
+                        </div>
                       </div>
                     </div>
-                    <div
-                      className="bg-amber-500 w-3 sm:w-5 rounded-t transition-all hover:bg-amber-400 relative group"
-                      style={{ height: getBarHeightPercent(f.saidasDoMes) }}
-                    >
-                      {f.saidasDoMes > 0 && (
-                        <span className="hidden print:block absolute bottom-full left-1/2 -translate-x-1/2 mb-0.5 text-[6px] font-bold text-amber-700 whitespace-nowrap">
-                          {formatCompact(f.saidasDoMes)}
-                        </span>
-                      )}
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] font-mono py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
-                        {formatBRL(f.saidasDoMes)}
-                      </div>
-                    </div>
+                    <span className="text-[10px] sm:text-xs font-bold text-slate-600 mt-1 select-none print:text-[8px] print:mt-0.5">
+                      {meses.find(m => m.value === f.mes)?.label.slice(0, 3)}
+                    </span>
                   </div>
-                  <span className="text-[10px] sm:text-xs font-bold text-slate-600 mt-1 select-none print:text-[8px] print:mt-0.5">
-                    {meses.find(m => m.value === f.mes)?.label.slice(0, 3)}
-                  </span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -1135,12 +1139,12 @@ export default function FinanceiroManager({ initialTab, navigateTo }) {
           <h1 className="text-2xl font-bold text-slate-900">{getTituloTela()}</h1>
           <p className="text-sm text-slate-500 mt-1">Gestão de dízimos, despesas e auditoria de competências mensais ou anuais.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
           {/* Alternância Rápida de Abas (Direto para o Dashboard ou Analítico) */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-sm select-none">
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-sm select-none w-full sm:w-auto">
             <button
               onClick={() => navigateTo ? navigateTo('dashboards') : setActiveTab('dashboard')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'dashboard'
                   ? 'bg-white text-emerald-800 shadow-sm'
                   : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50/50'
@@ -1151,7 +1155,7 @@ export default function FinanceiroManager({ initialTab, navigateTo }) {
             </button>
             <button
               onClick={() => navigateTo ? navigateTo('analitico') : setActiveTab('extrato')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'extrato'
                   ? 'bg-white text-emerald-800 shadow-sm'
                   : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50/50'
@@ -1535,7 +1539,7 @@ export default function FinanceiroManager({ initialTab, navigateTo }) {
               {/* Fechamentos */}
               <div className="space-y-2.5">
                 <h4 className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider pl-1">Períodos Trancados</h4>
-                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden overflow-x-auto scrollbar-thin">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
                       <tr className="bg-slate-50 text-slate-400 text-[8px] font-bold uppercase tracking-wider border-b border-slate-100 select-none">
@@ -1544,6 +1548,8 @@ export default function FinanceiroManager({ initialTab, navigateTo }) {
                         <th className="px-4 py-2.5">Receitas</th>
                         <th className="px-4 py-2.5">Despesas</th>
                         <th className="px-4 py-2.5">Saldo Final</th>
+                        <th className="px-4 py-2.5">Fechado Em</th>
+                        <th className="px-4 py-2.5">Por (Auditor)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -1557,11 +1563,17 @@ export default function FinanceiroManager({ initialTab, navigateTo }) {
                             <td className="px-4 py-2.5 font-mono text-emerald-700 font-semibold">{formatBRL(f.entradasDoMes)}</td>
                             <td className="px-4 py-2.5 font-mono text-amber-600 font-semibold">{formatBRL(f.saidasDoMes)}</td>
                             <td className="px-4 py-2.5 font-mono font-bold text-emerald-800">{formatBRL(f.saldoFinal)}</td>
+                            <td className="px-4 py-2.5 text-[10px] text-slate-550 font-medium">
+                              {f.dataFechamento ? new Date(f.dataFechamento).toLocaleDateString('pt-BR') : '-'}
+                            </td>
+                            <td className="px-4 py-2.5 text-[10px] text-slate-450 uppercase font-semibold">
+                              {f.usuarioId ? `Admin (ID: ${f.usuarioId})` : '-'}
+                            </td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={5} className="px-4 py-6 text-center text-slate-400 italic">Sem registros.</td>
+                          <td colSpan={7} className="px-4 py-6 text-center text-slate-400 italic">Sem registros.</td>
                         </tr>
                       )}
                     </tbody>
@@ -1636,8 +1648,8 @@ export default function FinanceiroManager({ initialTab, navigateTo }) {
             </div>
 
             {/* A4 Document Content */}
-            <div className="p-6 bg-slate-100 max-h-[80vh] overflow-y-auto print:p-0 print:bg-white print:max-h-none print:overflow-visible">
-              <div id="secao-imprimivel" className="bg-white border border-slate-300 rounded-none shadow-md max-w-[21cm] min-h-[29.7cm] mx-auto p-12 print:p-0 print:border-none print:shadow-none flex flex-col justify-between font-sans text-slate-800">
+            <div className="p-6 bg-slate-100 max-h-[80vh] overflow-y-auto overflow-x-auto scrollbar-thin print:p-0 print:bg-white print:max-h-none print:overflow-visible">
+              <div id="secao-imprimivel" className="bg-white border border-slate-300 rounded-none shadow-md w-full min-w-[640px] md:min-w-0 max-w-[21cm] min-h-[29.7cm] mx-auto p-12 print:p-0 print:border-none print:shadow-none flex flex-col justify-between font-sans text-slate-800">
                 
                 <div className="space-y-6">
                   {/* Header Area (Com logo proporcional) */}

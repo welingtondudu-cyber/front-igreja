@@ -16,15 +16,37 @@ public class DatabaseSanitizer implements CommandLineRunner {
 
     private final MembroRepository membroRepository;
     private final CargoRepository cargoRepository;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
-    public DatabaseSanitizer(MembroRepository membroRepository, CargoRepository cargoRepository) {
+    public DatabaseSanitizer(MembroRepository membroRepository, CargoRepository cargoRepository, org.springframework.jdbc.core.JdbcTemplate jdbcTemplate) {
         this.membroRepository = membroRepository;
         this.cargoRepository = cargoRepository;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
     @Transactional
     public void run(String... args) throws Exception {
+        try {
+            System.out.println("--- ALTERING PICTURE COLUMNS TO TEXT TYPE ---");
+            jdbcTemplate.execute("ALTER TABLE gestao.eventos ALTER COLUMN imagem_url TYPE TEXT");
+            jdbcTemplate.execute("ALTER TABLE gestao.membros ALTER COLUMN foto_perfil_url TYPE TEXT");
+            jdbcTemplate.execute("ALTER TABLE gestao.noticias ALTER COLUMN imagem_url TYPE TEXT");
+            jdbcTemplate.execute("ALTER TABLE gestao.trilhas ALTER COLUMN imagem_url TYPE TEXT");
+            System.out.println("--- PICTURE COLUMNS ALTERED SUCCESSFULLY ---");
+        } catch (Exception ex) {
+            System.err.println("Could not alter picture columns: " + ex.getMessage());
+        }
+
+        try {
+            System.out.println("--- ENSURING VOTACAO SCHEMA HAS IDADE_LIMITE ---");
+            jdbcTemplate.execute("ALTER TABLE gestao.votacoes ADD COLUMN IF NOT EXISTS idade_limite integer DEFAULT 0");
+            jdbcTemplate.execute("UPDATE gestao.votacoes SET idade_limite = 0 WHERE idade_limite IS NULL");
+            System.out.println("--- VOTACAO SCHEMA UPDATED SUCCESSFULLY ---");
+        } catch (Exception ex) {
+            System.err.println("Could not alter votacoes table: " + ex.getMessage());
+        }
+
         try {
             List<Membro> membros = membroRepository.findAll();
             boolean modified = false;

@@ -13,6 +13,7 @@ public record MembroFormDTO(
         LocalDate dataNascimento,
         String sexo,
         String cpf,
+        String rg,
         Long cargoId,
         Long liderDiretoId,
         java.util.List<Long> ministeriosIds,

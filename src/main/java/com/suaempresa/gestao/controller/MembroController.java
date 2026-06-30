@@ -32,6 +32,7 @@ import java.util.Map;
 public class MembroController {
 
     private final MembroService membroService;
+    private final com.suaempresa.gestao.repository.CargoRepository cargoRepository;
 
     /**
      * GET /api/membros
@@ -108,6 +109,19 @@ public class MembroController {
         return ResponseEntity.ok(membroService.atualizar(id, dto));
     }
 
+    @GetMapping("/{matricula}/historico")
+    @Operation(summary = "Obter histórico de alterações do membro", description = "Retorna a lista de todas as edições no cadastro de um membro específico pela matrícula.")
+    public ResponseEntity<java.util.List<com.suaempresa.gestao.domain.dto.MembroHistoricoDTO>> obterHistorico(
+            @Parameter(description = "Matrícula do membro", required = true) @PathVariable String matricula
+    ) {
+        Long id = parseMatriculaToId(matricula);
+        java.util.List<com.suaempresa.gestao.domain.dto.MembroHistoricoDTO> logs = membroService.obterHistoricoMembro(id)
+                .stream()
+                .map(com.suaempresa.gestao.domain.dto.MembroHistoricoDTO::fromEntity)
+                .toList();
+        return ResponseEntity.ok(logs);
+    }
+
     private Long parseMatriculaToId(String matricula) {
         try {
             return Long.parseLong(matricula);
@@ -165,5 +179,13 @@ public class MembroController {
     ) {
         membroService.importarCsv(file);
         return ResponseEntity.ok(Map.of("mensagem", "CSV importado com sucesso!"));
+    }
+
+    @GetMapping("/cargos")
+    @Operation(summary = "Listar todos os cargos", description = "Retorna todos os cargos cadastrados para seleção em formulários.")
+    public ResponseEntity<java.util.List<com.suaempresa.gestao.domain.dto.CargoResumoDTO>> listarTodosCargos() {
+        return ResponseEntity.ok(
+            cargoRepository.findAll().stream().map(com.suaempresa.gestao.domain.dto.CargoResumoDTO::fromEntity).toList()
+        );
     }
 }

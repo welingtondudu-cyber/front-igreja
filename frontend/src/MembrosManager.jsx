@@ -3,7 +3,7 @@ import {
   Search, Plus, Download, Upload, Info, Edit, UserMinus, Phone,
   X, Check, AlertCircle, Loader2, Filter, ChevronDown, ChevronUp,
   User, Mail, Calendar, Hash, MapPin, Award, CheckCircle2, RefreshCw,
-  UserCheck, Users
+  UserCheck, Users, Trash2
 } from 'lucide-react'
 
 const WhatsAppIcon = (props) => (
@@ -54,6 +54,11 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [selectedMember, setSelectedMember] = useState(null)
 
+  // Member Details Sub-Tabs and History
+  const [activeDetailTab, setActiveDetailTab] = useState('cadastro')
+  const [memberHistory, setMemberHistory] = useState([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+
   const [showImportModal, setShowImportModal] = useState(false)
   const [importFile, setImportFile] = useState(null)
   const [importStatus, setImportStatus] = useState(null) // null | 'success' | 'error'
@@ -72,6 +77,7 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
   const [formData, setFormData] = useState({
     nomeCompleto: '',
     cpf: '',
+    rg: '',
     whatsapp: '',
     email: '',
     fotoPerfilUrl: '',
@@ -334,10 +340,28 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
       if (res.ok) {
         const data = await res.json()
         setSelectedMember(data)
+        setActiveDetailTab('cadastro')
+        setMemberHistory([])
         setShowDetailModal(true)
+        fetchMemberHistory(matricula)
       }
     } catch (err) {
       alert('Erro ao buscar detalhes do membro')
+    }
+  }
+
+  const fetchMemberHistory = async (matricula) => {
+    setLoadingHistory(true)
+    try {
+      const res = await fetch(`/api/membros/${matricula}/historico`)
+      if (res.ok) {
+        const data = await res.json()
+        setMemberHistory(data)
+      }
+    } catch (err) {
+      console.error('Erro ao buscar histórico do membro', err)
+    } finally {
+      setLoadingHistory(false)
     }
   }
 
@@ -369,6 +393,7 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
               matricula: detail.matricula,
               nomeCompleto: detail.nomeCompleto || '',
               cpf: formatCPF(detail.cpf || ''),
+              rg: detail.rg || '',
               whatsapp: formatWhatsapp(detail.whatsapp || ''),
               email: detail.email || '',
               fotoPerfilUrl: detail.fotoPerfilUrl || '',
@@ -674,7 +699,7 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
 
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                Ministério / Pequeno Grupo
+                Ministério / Sociedade Interna
               </label>
               <select
                 value={filterGrupoId}
@@ -684,7 +709,7 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
                 <option value="">Todos os Grupos</option>
                 {grupos.map((g) => (
                   <option key={g.id} value={g.id}>
-                    {g.nomeGrupo} ({g.tipoGrupo === 'MINISTERIO' ? 'Ministério' : 'P. Grupo'})
+                    {g.nomeGrupo} ({g.tipoGrupo === 'MINISTERIO' ? 'Ministério' : 'Soc. Interna'})
                   </option>
                 ))}
               </select>
@@ -1020,69 +1045,135 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
               </button>
             </div>
 
-            {/* Modal Body */}
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[60vh] overflow-y-auto">
-              <div className="space-y-4">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">Dados Pessoais</h4>
-                <div className="space-y-2 text-sm text-slate-700">
-                  <p className="flex items-center gap-2"><User className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">Sexo:</span> {selectedMember.sexo || 'Não informado'}</p>
-                  <p className="flex items-center gap-2"><Calendar className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">Nascimento:</span> {selectedMember.dataNascimento ? formatDate(selectedMember.dataNascimento) : 'Não cadastrado'}</p>
-                  <p className="flex items-center gap-2"><Hash className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">CPF:</span> {selectedMember.cpf ? formatCPF(selectedMember.cpf) : 'Não informado'}</p>
-                </div>
-
-                <div className="pt-4">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">Contato</h4>
-                </div>
-                <div className="space-y-2 text-sm text-slate-700">
-                  <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">WhatsApp:</span> {selectedMember.whatsapp ? formatWhatsapp(selectedMember.whatsapp) : 'Não informado'}</p>
-                  <p className="flex items-center gap-2"><Mail className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">E-mail:</span> {selectedMember.email || 'Não informado'}</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">Dados Eclesiásticos</h4>
-                <div className="space-y-2 text-sm text-slate-700">
-                  <p className="flex items-center gap-2"><Award className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">Cargo/Função:</span> {selectedMember.tituloCargo || 'Membro'}</p>
-                  <p className="flex items-center gap-2"><User className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">Líder Direto:</span> {selectedMember.nomeLiderDireto || 'Sem líder imediato'}</p>
-                  <p className="flex items-center gap-2"><Calendar className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">Adesão:</span> {selectedMember.dataAdesao ? formatDate(selectedMember.dataAdesao) : 'Não cadastrada'}</p>
-                </div>
-
-                <div className="pt-4">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">Vínculos de Grupos</h4>
-                </div>
-                <div className="space-y-2">
-                  <div>
-                    <span className="text-xs font-bold text-slate-500 block mb-1">Ministérios:</span>
-                    {selectedMember.ministerios && selectedMember.ministerios.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {selectedMember.ministerios.map((m, idx) => (
-                          <span key={idx} className="bg-emerald-50 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded border border-emerald-100">{m}</span>
-                        ))}
-                      </div>
-                    ) : <span className="text-xs text-slate-400 italic">Nenhum</span>}
-                  </div>
-
-                  <div className="mt-2">
-                    <span className="text-xs font-bold text-slate-500 block mb-1">Pequenos Grupos:</span>
-                    {selectedMember.pequenosGrupos && selectedMember.pequenosGrupos.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {selectedMember.pequenosGrupos.map((pg, idx) => (
-                          <span key={idx} className="bg-teal-50 text-teal-800 text-xs font-semibold px-2 py-0.5 rounded border border-teal-100">{pg}</span>
-                        ))}
-                      </div>
-                    ) : <span className="text-xs text-slate-400 italic">Nenhum</span>}
-                  </div>
-                </div>
-              </div>
-              {selectedMember.observacao && (
-                <div className="col-span-1 md:col-span-2 space-y-2 mt-2">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">Observações</h4>
-                  <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100 whitespace-pre-wrap">
-                    {selectedMember.observacao}
-                  </p>
-                </div>
-              )}
+            {/* Modal Sub-Tabs */}
+            <div className="flex border-b border-slate-100 bg-slate-50/50 px-6 select-none shrink-0">
+              <button
+                onClick={() => setActiveDetailTab('cadastro')}
+                className={`py-3 px-4 text-xs font-bold border-b-2 transition-all ${
+                  activeDetailTab === 'cadastro'
+                    ? 'border-emerald-600 text-emerald-800'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Ficha Cadastral
+              </button>
+              <button
+                onClick={() => setActiveDetailTab('historico')}
+                className={`py-3 px-4 text-xs font-bold border-b-2 transition-all ${
+                  activeDetailTab === 'historico'
+                    ? 'border-emerald-600 text-emerald-800'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Histórico de Alterações
+              </button>
             </div>
+
+            {/* Modal Body */}
+            {activeDetailTab === 'cadastro' && (
+              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[60vh] overflow-y-auto">
+                <div className="space-y-4">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">Dados Pessoais</h4>
+                  <div className="space-y-2 text-sm text-slate-700">
+                    <p className="flex items-center gap-2"><User className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">Sexo:</span> {selectedMember.sexo || 'Não informado'}</p>
+                    <p className="flex items-center gap-2"><Calendar className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">Nascimento:</span> {selectedMember.dataNascimento ? formatDate(selectedMember.dataNascimento) : 'Não cadastrado'}</p>
+                    <p className="flex items-center gap-2"><Hash className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">CPF:</span> {selectedMember.cpf ? formatCPF(selectedMember.cpf) : 'Não informado'}</p>
+                    <p className="flex items-center gap-2"><Hash className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">RG:</span> {selectedMember.rg || 'Não informado'}</p>
+                  </div>
+
+                  <div className="pt-4">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">Contato</h4>
+                  </div>
+                  <div className="space-y-2 text-sm text-slate-700">
+                    <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">WhatsApp:</span> {selectedMember.whatsapp ? formatWhatsapp(selectedMember.whatsapp) : 'Não informado'}</p>
+                    <p className="flex items-center gap-2"><Mail className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">E-mail:</span> {selectedMember.email || 'Não informado'}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">Dados Eclesiásticos</h4>
+                  <div className="space-y-2 text-sm text-slate-700">
+                    <p className="flex items-center gap-2"><Award className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">Cargo/Função:</span> {selectedMember.tituloCargo || 'Membro'}</p>
+                    <p className="flex items-center gap-2"><User className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">Líder Direto:</span> {selectedMember.nomeLiderDireto || 'Sem líder imediato'}</p>
+                    <p className="flex items-center gap-2"><Calendar className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">Adesão:</span> {selectedMember.dataAdesao ? formatDate(selectedMember.dataAdesao) : 'Não cadastrada'}</p>
+                  </div>
+
+                  <br />
+                  <div className="pt-4">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">Vínculos de Grupos</h4>
+                  </div>
+                  <div className="space-y-2">
+                    <div>
+                      <span className="text-xs font-bold text-slate-500 block mb-1">Ministérios:</span>
+                      {selectedMember.ministerios && selectedMember.ministerios.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {selectedMember.ministerios.map((m, idx) => (
+                            <span key={idx} className="bg-emerald-50 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded border border-emerald-100">{m}</span>
+                          ))}
+                        </div>
+                      ) : <span className="text-xs text-slate-400 italic">Nenhum</span>}
+                    </div>
+
+                    <div className="mt-2">
+                      <span className="text-xs font-bold text-slate-500 block mb-1">Sociedades Internas:</span>
+                      {selectedMember.pequenosGrupos && selectedMember.pequenosGrupos.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {selectedMember.pequenosGrupos.map((pg, idx) => (
+                            <span key={idx} className="bg-teal-50 text-teal-800 text-xs font-semibold px-2 py-0.5 rounded border border-teal-100">{pg}</span>
+                          ))}
+                        </div>
+                      ) : <span className="text-xs text-slate-400 italic">Nenhum</span>}
+                    </div>
+                  </div>
+                </div>
+                {selectedMember.observacao && (
+                  <div className="col-span-1 md:col-span-2 space-y-2 mt-2">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">Observações</h4>
+                    <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100 whitespace-pre-wrap">
+                      {selectedMember.observacao}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeDetailTab === 'historico' && (
+              <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">Linha do Tempo de Alterações</h4>
+                {loadingHistory ? (
+                  <div className="py-12 flex flex-col items-center justify-center">
+                    <Loader2 className="h-8 w-8 text-emerald-700 animate-spin mb-2" />
+                    <span className="text-xs text-slate-500">Buscando histórico...</span>
+                  </div>
+                ) : memberHistory.length > 0 ? (
+                  <div className="space-y-4">
+                    {memberHistory.map((log) => (
+                      <div key={log.id} className="border-l-2 border-emerald-500 pl-3 py-1.5 space-y-1 text-xs">
+                        <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold">
+                          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-100 uppercase tracking-wider">{log.campoAlterado}</span>
+                          <span>{new Date(log.dataAlteracao).toLocaleString('pt-BR')}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 mt-1 font-medium">
+                          <div>
+                            <span className="text-[10px] text-slate-400 block font-bold">Valor Anterior</span>
+                            <span className="text-slate-600 break-words">{log.valorAntigo || 'Vazio'}</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-400 block font-bold">Valor Novo</span>
+                            <span className="text-emerald-800 font-bold break-words">{log.valorNovo || 'Vazio'}</span>
+                          </div>
+                        </div>
+                        <span className="text-[9px] text-slate-400 font-bold block uppercase mt-1">Autor: Admin (ID: {log.usuarioId})</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-12 text-center text-slate-400 italic text-xs">
+                    Nenhuma alteração registrada para este cadastro de membro.
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Modal Footer */}
             <div className="p-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row justify-between gap-3 animate-in fade-in duration-200">
@@ -1337,7 +1428,7 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
                         />
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                           <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                             CPF *
@@ -1352,6 +1443,18 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
                                 : 'border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed'
                             }`}
                             readOnly={String(formData.cargoId) !== '4'}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                            RG
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.rg || ''}
+                            onChange={(e) => setFormData({ ...formData, rg: e.target.value })}
+                            className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 bg-white"
                           />
                         </div>
 
@@ -1386,15 +1489,48 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
 
                         <div>
                           <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                            Foto de Perfil (URL)
+                            Foto de Perfil
                           </label>
-                          <input
-                            type="url"
-                            placeholder="https://exemplo.com/foto.jpg"
-                            value={formData.fotoPerfilUrl}
-                            onChange={(e) => setFormData({ ...formData, fotoPerfilUrl: e.target.value })}
-                            className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-600"
-                          />
+                          <div className="flex items-center gap-3">
+                            {formData.fotoPerfilUrl && (
+                              <img src={formData.fotoPerfilUrl} alt="Preview" className="w-12 h-12 rounded-xl object-cover border border-slate-200" />
+                            )}
+                            <div className="relative flex-grow">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const file = e.target.files[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (event) => {
+                                      setFormData({ ...formData, fotoPerfilUrl: event.target.result });
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                                className="hidden"
+                                id="fotoPerfilUploadInput"
+                              />
+                              <label
+                                htmlFor="fotoPerfilUploadInput"
+                                className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-600 bg-white font-semibold text-slate-700 cursor-pointer flex items-center justify-between hover:bg-slate-50 transition-colors"
+                              >
+                                <span>{formData.fotoPerfilUrl ? 'Alterar Foto' : 'Selecionar Foto'}</span>
+                                <Upload className="h-4 w-4 text-slate-400" />
+                              </label>
+                            </div>
+                            {formData.fotoPerfilUrl && (
+                              <button
+                                type="button"
+                                onClick={() => setFormData({ ...formData, fotoPerfilUrl: '' })}
+                                className="p-2.5 border border-red-200 text-red-650 hover:bg-red-50 rounded-xl transition-colors"
+                                title="Limpar Foto"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -1544,7 +1680,7 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
 
                         <div>
                           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                            Pequenos Grupos Associados
+                            Sociedades Internas Associadas
                           </label>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-xl">
                             {grupos.filter(g => g.tipoGrupo !== 'MINISTERIO').length === 0 ? (

@@ -11,19 +11,22 @@ import CadastroEleicao from './CadastroEleicao'
 import MembrosManager from './MembrosManager'
 import OrganogramaView from './OrganogramaView'
 import RestricoesManager from './RestricoesManager'
+import EleicoesManager from './EleicoesManager'
 import FinanceiroManager from './FinanceiroManager'
 import EscalasManager from './EscalasManager'
+import NoticiasManager from './NoticiasManager'
+import TrilhasManager from './TrilhasManager'
 
 function App() {
   // Navigation & View States
   const [currentView, setCurrentView] = useState(() => {
     const params = new URLSearchParams(window.location.search)
     const view = params.get('view')
-    if (view && ['feed', 'calendario', 'membros', 'organograma', 'restricoes', 'apuracao', 'cadastro', 'dashboards', 'analitico', 'fechamentos', 'financeiro-relatorios', 'escalas'].includes(view)) {
+    if (view && ['feed', 'calendario', 'membros', 'organograma', 'eleicoes', 'apuracao', 'dashboards', 'analitico', 'fechamentos', 'financeiro-relatorios', 'escalas'].includes(view)) {
       return view
     }
     if (window.location.pathname === '/apuracao') return 'apuracao'
-    if (window.location.pathname === '/cadastro') return 'cadastro'
+    if (window.location.pathname === '/eleicoes') return 'eleicoes'
     return 'feed'
   })
 
@@ -78,6 +81,33 @@ function App() {
     }
     loadVotacoes()
   }, [])
+
+  // Calendar States
+  const [eventosCalendario, setEventosCalendario] = useState([])
+  const [loadingCalendario, setLoadingCalendario] = useState(false)
+  const [filtroMes, setFiltroMes] = useState(new Date().getMonth() + 1) // 1-12
+  const [filtroAno, setFiltroAno] = useState(new Date().getFullYear()) // 2026
+
+  useEffect(() => {
+    if (currentView === 'calendario') {
+      fetchEventosCalendario()
+    }
+  }, [currentView])
+
+  const fetchEventosCalendario = async () => {
+    setLoadingCalendario(true)
+    try {
+      const res = await fetch('/api/escalas/visao-geral')
+      if (res.ok) {
+        const data = await res.json()
+        setEventosCalendario(data)
+      }
+    } catch (err) {
+      console.error('Erro ao buscar eventos para o calendario', err)
+    } finally {
+      setLoadingCalendario(false)
+    }
+  }
 
   // Sync URL with View
   const navigateTo = (viewName) => {
@@ -270,9 +300,8 @@ function App() {
       case 'estudos': return 'Estudos Bíblicos'
       case 'membros': return 'Gestão de Membros'
       case 'organograma': return 'Organograma'
-      case 'restricoes': return 'Restrição de Votos'
-      case 'apuracao': return 'Apuração Eleição'
-      case 'cadastro': return 'Cadastrar Eleição'
+      case 'apuracao': return 'Apuração de Eleição'
+      case 'eleicoes': return 'Gerenciar Eleições'
       case 'dashboards': return 'Financeiro / Dashboards'
       case 'analitico': return 'Financeiro / Analítico'
       case 'voting': return 'Assembleia / Votar'
@@ -283,11 +312,11 @@ function App() {
   const renderContent = () => {
     switch (currentView) {
       case 'feed':
-        return renderFeed()
+        return <NoticiasManager />
       case 'calendario':
         return renderCalendario()
       case 'estudos':
-        return renderEstudos()
+        return <TrilhasManager />
       case 'membros':
         return (
           <MembrosManager
@@ -313,12 +342,10 @@ function App() {
             }}
           />
         )
-      case 'restricoes':
-        return <RestricoesManager onClose={() => navigateTo('apuracao')} />
       case 'apuracao':
-        return <Apuracao onBackToVote={() => navigateTo('voting')} />
-      case 'cadastro':
-        return <CadastroEleicao onBack={() => navigateTo('apuracao')} />
+        return <Apuracao onBackToVote={() => navigateTo('voting')} onBackToAdmin={() => navigateTo('eleicoes')} />
+      case 'eleicoes':
+        return <EleicoesManager onNavigate={navigateTo} />
       case 'escalas':
         return <EscalasManager />
       case 'dashboards':
@@ -418,23 +445,87 @@ function App() {
   // 2. HIGH FIDELITY CALENDAR VIEW
   const renderCalendario = () => {
     const daysOfWeek = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
-    const events = [
-      { day: 7, title: "Culto de Santa Ceia", time: "19:00" },
-      { day: 14, title: "Assembleia Geral Extraordinária", time: "10:00" },
-      { day: 21, title: "EBD Especial", time: "09:00" },
-      { day: 28, title: "Culto de Missões", time: "19:00" }
-    ]
+    
+    const meses = [
+      { value: 1, label: "Janeiro" },
+      { value: 2, label: "Fevereiro" },
+      { value: 3, label: "Março" },
+      { value: 4, label: "Abril" },
+      { value: 5, label: "Maio" },
+      { value: 6, label: "Junho" },
+      { value: 7, label: "Julho" },
+      { value: 8, label: "Agosto" },
+      { value: 9, label: "Setembro" },
+      { value: 10, label: "Outubro" },
+      { value: 11, label: "Novembro" },
+      { value: 12, label: "Dezembro" }
+    ];
+
+    const anos = [2025, 2026, 2027, 2028];
+
+    const formatarDataLocal = (dateStr) => {
+      if (!dateStr) return '';
+      const parts = dateStr.split('-');
+      if (parts.length < 3) return dateStr;
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    };
+
+    const numDays = new Date(filtroAno, filtroMes, 0).getDate()
+    const firstDayIndex = new Date(filtroAno, filtroMes - 1, 1).getDay()
+
+    // Filter events of the current month/year
+    const monthEvents = eventosCalendario.filter(ev => {
+      if (!ev.data) return false
+      const [y, m, d] = ev.data.split('-').map(Number)
+      return y === filtroAno && m === filtroMes
+    })
+
+    // Sort by day and time
+    monthEvents.sort((a, b) => a.data.localeCompare(b.data) || a.hora.localeCompare(b.hora))
 
     return (
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 border border-slate-200 rounded-2xl shadow-sm">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Agenda Eclesiástica</h1>
-            <p className="text-sm text-slate-500 mt-1">Veja a programação de cultos, reuniões e eventos oficiais.</p>
+        {/* Banner de Destaque Verde */}
+        <div className="relative bg-emerald-800 text-white rounded-3xl p-6 sm:p-8 overflow-hidden shadow-lg flex flex-col justify-center min-h-[160px]">
+          <div className="absolute right-0 top-0 opacity-10 translate-x-12 -translate-y-12 select-none pointer-events-none">
+            <Calendar className="h-64 w-64" />
           </div>
-          <div className="flex items-center gap-2 bg-emerald-50 text-emerald-800 px-3.5 py-2 rounded-xl border border-emerald-100 text-xs font-semibold">
-            <Calendar className="h-4.5 w-4.5 text-emerald-700" />
-            Junho 2026
+          <span className="text-xs font-bold bg-emerald-700/50 uppercase tracking-widest px-3 py-1 rounded-full w-fit">Programação Oficial</span>
+          <h1 className="text-2xl sm:text-3xl font-extrabold mt-3 tracking-tight">Agenda Eclesiástica</h1>
+          <p className="text-sm text-emerald-100 mt-2 max-w-xl">Acompanhe todos os cultos, assembleias, reuniões e eventos agendados para a nossa comunidade local.</p>
+        </div>
+
+        {/* Filtros de Mês e Ano */}
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white p-4 border border-slate-200 rounded-2xl shadow-sm">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Filtrar por Período:</span>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            {/* Seletor do Mês */}
+            <div className="flex items-center gap-2 bg-slate-55/10 border border-slate-250 rounded-xl px-3 py-1.5 shadow-xs w-full sm:w-48">
+              <span className="text-xs text-slate-500">Mês:</span>
+              <select
+                value={filtroMes}
+                onChange={(e) => setFiltroMes(Number(e.target.value))}
+                className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer w-full"
+              >
+                {meses.map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Seletor do Ano */}
+            <div className="flex items-center gap-2 bg-slate-55/10 border border-slate-250 rounded-xl px-3 py-1.5 shadow-xs w-full sm:w-32">
+              <span className="text-xs text-slate-500">Ano:</span>
+              <select
+                value={filtroAno}
+                onChange={(e) => setFiltroAno(Number(e.target.value))}
+                className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer w-full"
+              >
+                {anos.map(a => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -448,46 +539,93 @@ function App() {
             </div>
             
             <div className="grid grid-cols-7 gap-2">
-              {/* Empty days for June 2026 (Starts on Monday) */}
-              <div className="bg-slate-50/50 border border-slate-100 rounded-xl min-h-[70px] p-2 text-slate-300 text-xs">31</div>
+              {/* Empty slots for month start offset */}
+              {[...Array(firstDayIndex)].map((_, idx) => (
+                <div key={`empty-${idx}`} className="bg-slate-55/10 border border-slate-100 rounded-xl min-h-[75px] p-2 text-slate-300 text-xs" />
+              ))}
               
               {/* Month days */}
-              {[...Array(30)].map((_, index) => {
+              {[...Array(numDays)].map((_, index) => {
                 const dayNum = index + 1
-                const hasEvent = events.find(e => e.day === dayNum)
+                const dateString = `${filtroAno}-${String(filtroMes).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`
+                const dayEvents = eventosCalendario.filter(ev => ev.data === dateString)
+                const hasEvent = dayEvents.length > 0
                 
                 return (
-                  <div key={dayNum} className={`border rounded-xl min-h-[75px] p-2 flex flex-col justify-between transition-colors relative hover:bg-slate-50 cursor-pointer ${
+                  <div key={dayNum} className={`border rounded-xl min-h-[75px] p-2 flex flex-col justify-between transition-colors relative hover:bg-slate-55/30 cursor-pointer ${
                     hasEvent ? 'border-emerald-600 bg-emerald-50/10' : 'border-slate-200 bg-white'
-                  }`}>
+                  }`} onClick={() => {
+                    if (hasEvent) {
+                      // Navigate to scales or display detail in inline popup if needed
+                    }
+                  }}>
                     <span className={`text-xs font-bold ${hasEvent ? 'text-emerald-800' : 'text-slate-500'}`}>{dayNum}</span>
                     {hasEvent && (
-                      <span className="text-[9px] leading-tight font-bold bg-emerald-700 text-white px-1.5 py-0.5 rounded block truncate" title={hasEvent.title}>
-                        {hasEvent.title}
-                      </span>
+                      <div className="space-y-1 mt-1">
+                        {dayEvents.map(e => (
+                          <span 
+                            key={e.id} 
+                            className="text-[8px] leading-tight font-extrabold bg-emerald-700 text-white px-1.5 py-0.5 rounded block truncate"
+                            title={`${e.titulo} (${e.hora ? e.hora.substring(0, 5) : ''})`}
+                          >
+                            {e.titulo}
+                          </span>
+                        ))}
+                      </div>
                     )}
                   </div>
                 )
               })}
+
+              {/* Padding empty slots at the end of the calendar grid */}
+              {(() => {
+                const totalSlots = firstDayIndex + numDays;
+                const remaining = totalSlots % 7 === 0 ? 0 : 7 - (totalSlots % 7);
+                return [...Array(remaining)].map((_, idx) => (
+                  <div key={`empty-end-${idx}`} className="bg-slate-55/10 border border-slate-100 rounded-xl min-h-[75px] p-2 text-slate-300 text-xs" />
+                ));
+              })()}
             </div>
           </div>
 
           {/* Event list */}
-          <div className="lg:col-span-1 bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2">Eventos de Junho</h3>
-            <div className="space-y-3">
-              {events.map((ev, idx) => (
-                <div key={idx} className="flex gap-3 items-start p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl transition-colors border border-slate-100">
-                  <div className="bg-emerald-700 text-white font-mono font-bold text-sm px-2.5 py-1.5 rounded-lg flex flex-col items-center">
-                    <span>{ev.day}</span>
-                    <span className="text-[8px] uppercase tracking-wider font-sans">JUN</span>
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-800 text-xs">{ev.title}</h4>
-                    <p className="text-[10px] text-slate-500 font-semibold mt-0.5">{ev.time} • Templo Principal</p>
-                  </div>
+          <div className="lg:col-span-1 bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4 flex flex-col">
+            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center justify-between">
+              <span>Programação do Mês</span>
+              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-full">{monthEvents.length}</span>
+            </h3>
+            
+            <div className="space-y-3 flex-grow overflow-y-auto max-h-[500px] pr-1">
+              {loadingCalendario ? (
+                <div className="py-12 flex flex-col items-center justify-center text-slate-400">
+                  <Loader2 className="h-8 w-8 text-emerald-700 animate-spin mb-2" />
+                  <span>Carregando agenda...</span>
                 </div>
-              ))}
+              ) : monthEvents.length > 0 ? (
+                monthEvents.map((ev) => {
+                  const day = ev.data ? Number(ev.data.split('-')[2]) : 1;
+                  const monthAbbr = meses.find(m => m.value === filtroMes)?.label.substring(0, 3).toUpperCase() || 'MES';
+                  return (
+                    <div key={ev.id} className="flex gap-3 items-start p-3 bg-slate-55/10 hover:bg-slate-100/85 rounded-xl transition-all border border-slate-150 shadow-xs">
+                      <div className="bg-emerald-700 text-white font-mono font-bold text-sm px-2.5 py-1.5 rounded-lg flex flex-col items-center shrink-0 min-w-[45px]">
+                        <span>{day}</span>
+                        <span className="text-[8px] uppercase tracking-wider font-sans">{monthAbbr}</span>
+                      </div>
+                      <div className="space-y-0.5">
+                        <h4 className="font-bold text-slate-850 text-xs line-clamp-1">{ev.titulo}</h4>
+                        <p className="text-[10px] text-slate-500 font-semibold">{ev.hora ? ev.hora.substring(0, 5) : ''}h • Templo Principal</p>
+                        {ev.observacoes && (
+                          <p className="text-[9px] text-slate-400 italic line-clamp-1 mt-1">{ev.observacoes}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="py-12 text-center text-slate-400 italic text-xs">
+                  Nenhum evento agendado para {meses.find(m => m.value === filtroMes)?.label}.
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -940,32 +1078,15 @@ function App() {
               <Vote className="h-5 w-5 text-emerald-700" />
               Assembleia / Votar
             </button>
+
             <button
-              onClick={() => navigateTo('apuracao')}
+              onClick={() => navigateTo('eleicoes')}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                currentView === 'apuracao' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              <LayoutDashboard className="h-5 w-5 text-emerald-700" />
-              Apuração Eleição
-            </button>
-            <button
-              onClick={() => navigateTo('cadastro')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                currentView === 'cadastro' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-600 hover:bg-slate-50'
+                currentView === 'eleicoes' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-600 hover:bg-slate-50'
               }`}
             >
               <Settings className="h-5 w-5 text-emerald-700" />
-              Cadastrar Eleição
-            </button>
-            <button
-              onClick={() => navigateTo('restricoes')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                currentView === 'restricoes' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              <ShieldAlert className="h-5 w-5 text-emerald-700" />
-              Restrição de Votos
+              Gestão de Eleições
             </button>
           </div>
 
@@ -979,7 +1100,7 @@ function App() {
               }`}
             >
               <UserCheck className="h-5 w-5 text-emerald-700" />
-              Cadastro de Membros
+              Gestão de Membros
             </button>
             <button
               onClick={() => navigateTo('organograma')}
@@ -997,22 +1118,14 @@ function App() {
               }`}
             >
               <CalendarRange className="h-5 w-5 text-emerald-700" />
-              Escalas de Culto
+              Culto, Evento e Escala
             </button>
           </div>
 
           {/* GROUP 4: FINANCEIRO */}
           <div className="space-y-2">
             <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2">Grupo Financeiro</h4>
-            <button
-              onClick={() => navigateTo('dashboards')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                currentView === 'dashboards' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              <PieChart className="h-5 w-5 text-emerald-700" />
-              Dashboards Financeiros
-            </button>
+
             <button
               onClick={() => navigateTo('analitico')}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
@@ -1020,7 +1133,7 @@ function App() {
               }`}
             >
               <DollarSign className="h-5 w-5 text-emerald-700" />
-              Analítico Financeiro
+              Gestão Financeira
             </button>
           </div>
         </div>

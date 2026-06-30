@@ -24,6 +24,9 @@ public class Votacao {
     @Column(nullable = false)
     private Boolean ativa;
 
+    @Column(name = "idade_limite", nullable = false)
+    private Integer idadeLimite;
+
     @Column(name = "data_criacao", nullable = false)
     private LocalDateTime dataCriacao;
 

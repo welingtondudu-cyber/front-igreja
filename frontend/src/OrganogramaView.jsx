@@ -211,15 +211,10 @@ export default function OrganogramaView({ preFilter, onBack, onViewMemberDetails
         </div>
       )}
 
-      {/* HEADER */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 border border-slate-200 rounded-2xl shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Organograma Explorer</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Organograma</h1>
           <p className="text-sm text-slate-500 mt-1">Navegue interativamente pela hierarquia de liderança e subordinação.</p>
-        </div>
-        <div className="flex items-center gap-2 bg-emerald-50 text-emerald-800 px-3.5 py-2 rounded-xl border border-emerald-100 text-xs font-semibold">
-          <Users className="h-4.5 w-4.5 text-emerald-700" />
-          Navegação Interativa
         </div>
       </div>
 

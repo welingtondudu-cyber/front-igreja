@@ -13,6 +13,7 @@ function CadastroEleicao({ onBack }) {
   const [titulo, setTitulo] = useState('')
   const [descricao, setDescricao] = useState('')
   const [limiteVotos, setLimiteVotos] = useState(1)
+  const [idadeLimite, setIdadeLimite] = useState(18) // default 18
 
   // Lista de opções/candidatos
   const [opcoes, setOpcoes] = useState([
@@ -108,6 +109,7 @@ function CadastroEleicao({ onBack }) {
       titulo,
       descricao: descricao || null,
       limiteVotos: Number(limiteVotos),
+      idadeLimite: Number(idadeLimite),
       opcoes: opcoes.map(op => ({
         tituloOpcao: op.tituloOpcao.trim(),
         membroId: op.membroId ? Number(op.membroId) : null
@@ -128,6 +130,7 @@ function CadastroEleicao({ onBack }) {
         setTitulo('')
         setDescricao('')
         setLimiteVotos(1)
+        setIdadeLimite(18)
         setOpcoes([{ tituloOpcao: '', membroId: '', membroNome: '', loadingMembro: false, membroErro: '' }])
       } else {
         const problem = await res.json().catch(() => ({}))
@@ -220,6 +223,23 @@ function CadastroEleicao({ onBack }) {
               />
               <p className="text-xs text-slate-400 mt-1">
                 1 = escolha única (radio). Maior que 1 = múltipla escolha (checkbox).
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                Idade Limite (Mínima)
+              </label>
+              <input
+                type="number"
+                value={idadeLimite}
+                onChange={e => setIdadeLimite(Math.max(0, Number(e.target.value)))}
+                min={0}
+                className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm bg-white text-slate-800 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-colors"
+                required
+              />
+              <p className="text-xs text-slate-400 mt-1">
+                Idade mínima exigida para que o membro esteja apto a votar.
               </p>
             </div>
           </div>

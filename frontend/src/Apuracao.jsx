@@ -4,9 +4,9 @@ import { RefreshCw, CheckCircle2, AlertTriangle, Users, Award, ChevronLeft, Load
 // Set API URL (Vite proxies /api to backend, so we can use empty string or relative path)
 const API_URL = ''
 
-function Apuracao({ onBackToVote }) {
+function Apuracao({ onBackToVote, onBackToAdmin }) {
   const [votacoes, setVotacoes] = useState([])
-  const [selectedVotacaoId, setSelectedVotacaoId] = useState('')
+  const [selectedVotacaoId, setSelectedVotacaoId] = useState(() => localStorage.getItem('selectedVotacaoId') || '')
   const [selectedVotacaoTitle, setSelectedVotacaoTitle] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -64,10 +64,12 @@ function Apuracao({ onBackToVote }) {
           const data = await response.json()
           setVotacoes(data)
           if (data.length > 0) {
-            setSelectedVotacaoId(data[0].id.toString())
-            setSelectedVotacaoTitle(data[0].titulo)
-            // Se a primeira eleição carregada está ativa (ativa == true), oculta o resultado
-            setShowResults(!data[0].ativa)
+            const savedId = localStorage.getItem('selectedVotacaoId')
+            const selected = data.find(v => v.id.toString() === String(savedId)) || data[0]
+            setSelectedVotacaoId(selected.id.toString())
+            setSelectedVotacaoTitle(selected.titulo)
+            // Se a eleição carregada está ativa (ativa == true), oculta o resultado
+            setShowResults(!selected.ativa)
           }
         }
       } catch (err) {
@@ -145,7 +147,7 @@ function Apuracao({ onBackToVote }) {
       } else {
         // Fallback to mockup data in case of error or dev/empty database
         setApuracaoData(mockApuracao)
-        setError('Nota: Mostrando dados simulados (a votação selecionada pode não possuir votos registrados ou está vazia).')
+        setError('Não foi possível carregar os dados reais. Exibindo simulação.')
       }
     } catch (err) {
       console.error('Erro ao conectar com API de Apuração:', err)
@@ -191,30 +193,23 @@ function Apuracao({ onBackToVote }) {
       {/* BREADCRUMB TITLE & SELECTOR */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 animate-in fade-in duration-200">
         <div className="flex items-center gap-3">
+          {onBackToAdmin && (
+            <button 
+              onClick={onBackToAdmin}
+              className="p-2 hover:bg-slate-200 rounded-xl transition-colors text-slate-600 focus:outline-none border border-slate-200 bg-white"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+          )}
           <div className="text-sm font-semibold text-slate-500">
             Eleição / <span className="text-slate-800 font-bold">Apuração Eleição</span>
           </div>
         </div>
 
-        {/* DISGUISED ELECTION SELECTOR */}
+        {/* ELECTION TITLE BADGE */}
         <div className="flex items-center gap-2 text-xs font-semibold bg-white border border-slate-200 px-3.5 py-2 rounded-xl shadow-sm text-slate-600 animate-in fade-in duration-300">
-          <span>Selecione a Eleição:</span>
-          <select
-            value={selectedVotacaoId}
-            onChange={(e) => handleVotacaoChange(e.target.value)}
-            className="bg-transparent border-none font-bold text-emerald-700 focus:outline-none cursor-pointer py-0 focus:ring-0"
-            title="Selecionar Eleição"
-          >
-            {votacoes.length === 0 ? (
-              <option value="">Carregando eleições...</option>
-            ) : (
-              votacoes.map((v) => (
-                <option key={v.id} value={v.id} className="text-slate-800">
-                  {v.titulo} ({v.ativa ? 'Ativa' : 'Encerrada'})
-                </option>
-              ))
-            )}
-          </select>
+          <span className="text-slate-400">Eleição:</span>
+          <span className="font-bold text-emerald-700">{selectedVotacaoTitle || 'Carregando...'}</span>
         </div>
       </div>
 

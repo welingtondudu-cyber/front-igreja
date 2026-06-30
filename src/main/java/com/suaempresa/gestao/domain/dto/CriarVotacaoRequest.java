@@ -12,6 +12,10 @@ public record CriarVotacaoRequest(
         String descricao,
 
         Integer limiteVotos,
+        
+        @NotNull(message = "Idade limite é obrigatória")
+        @Min(value = 0, message = "Idade limite não pode ser negativa")
+        Integer idadeLimite,
 
         @NotEmpty(message = "A lista de opções não pode ser vazia")
         @Valid

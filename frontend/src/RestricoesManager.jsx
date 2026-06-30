@@ -130,14 +130,6 @@ export default function RestricoesManager({ initialVotacaoId, onClose }) {
           </h1>
           <p className="text-sm text-slate-500 mt-1">Impedir membros específicos de votar em determinadas eleições.</p>
         </div>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold py-2 px-4 rounded-xl transition-colors text-sm"
-          >
-            Voltar
-          </button>
-        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -165,24 +157,11 @@ export default function RestricoesManager({ initialVotacaoId, onClose }) {
           <form onSubmit={handleAddRestricao} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                Selecione a Eleição *
+                Eleição Selecionada
               </label>
-              <select
-                value={selectedVotacaoId}
-                onChange={(e) => setSelectedVotacaoId(e.target.value)}
-                className="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm bg-white text-slate-800 focus:outline-none focus:border-emerald-600"
-                required
-              >
-                {votacoes.length === 0 ? (
-                  <option value="">Carregando votações...</option>
-                ) : (
-                  votacoes.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.titulo} ({v.ativa ? 'Ativa' : 'Encerrada'})
-                    </option>
-                  ))
-                )}
-              </select>
+              <div className="w-full border border-slate-250 bg-slate-50 rounded-xl px-3.5 py-2 text-sm text-slate-800 font-bold">
+                {selectedVotacao ? selectedVotacao.titulo : 'Carregando...'}
+              </div>
             </div>
 
             {!isVotacaoAtiva ? (

@@ -18,6 +18,7 @@ public record MembroDetalhadoDTO(
         LocalDate dataNascimento,
         String sexo,
         String cpf,
+        String rg,
         String tituloCargo,
         String nomeLiderDireto,
         List<String> ministerios,
@@ -39,7 +40,9 @@ public record MembroDetalhadoDTO(
                     if (mg.getGrupo().getTipoGrupo() == TipoGrupo.MINISTERIO) {
                         ministerios.add(mg.getGrupo().getNomeGrupo());
                         ministeriosIds.add(mg.getGrupo().getId());
-                    } else if (mg.getGrupo().getTipoGrupo() == TipoGrupo.PEQUENO_GRUPO) {
+                    } else if (mg.getGrupo().getTipoGrupo() == TipoGrupo.PEQUENO_GRUPO
+                            || mg.getGrupo().getTipoGrupo() == TipoGrupo.SOCIEDADE_INTERNA
+                            || mg.getGrupo().getTipoGrupo() == TipoGrupo.SOCIEDADES_INTERNAS) {
                         pequenosGrupos.add(mg.getGrupo().getNomeGrupo());
                         pequenosGruposIds.add(mg.getGrupo().getId());
                     }
@@ -58,6 +61,7 @@ public record MembroDetalhadoDTO(
                 m.getDataNascimento(),
                 m.getSexo(),
                 m.getCpf(),
+                m.getRg(),
                 m.getCargo() != null ? m.getCargo().getTitulo() : null,
                 m.getLiderDireto() != null ? m.getLiderDireto().getNomeCompleto() : null,
                 ministerios,
