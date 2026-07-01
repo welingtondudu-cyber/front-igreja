@@ -5,7 +5,7 @@ import { Table } from '@tiptap/extension-table'
 import { TableRow } from '@tiptap/extension-table-row'
 import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
-import { Image as BaseImage } from '@tiptap/extension-image'
+import BaseImage from '@tiptap/extension-image'
 import { useState, useEffect } from 'react'
 
 function ResizableImageComponent({ node, updateAttributes, selected }) {

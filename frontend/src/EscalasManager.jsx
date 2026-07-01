@@ -906,6 +906,27 @@ export default function EscalasManager() {
 
               const activeCargo = grupos.find(c => c.id === selectedCargoId)
 
+              const allocatedListFiltered = escalasEdit.filter(item => {
+                const mb = membros.find(m => String(m.id) === String(item.membroId))
+                const pertenceAoCargo = item.grupoId 
+                    ? item.grupoId === selectedCargoId 
+                    : (mb && mb.cargoId === selectedCargoId)
+
+                if (!pertenceAoCargo && selectedCargoId !== null) return false
+
+                if (filterAllocatedNome) {
+                  const query = filterAllocatedNome.toLowerCase()
+                  const nome = mb ? mb.nomeCompleto : (item.nomeMembro || '')
+                  if (!nome.toLowerCase().includes(query)) return false
+                }
+
+                if (filterAllocatedStatus !== 'TODOS') {
+                  if (item.statusConfirmacao !== filterAllocatedStatus) return false
+                }
+
+                return true
+              })
+
               return (
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden flex flex-col md:flex-row h-full md:min-h-[600px]">
                   {/* MASTER: Lista de Ministérios (Esquerda) */}
@@ -1152,30 +1173,9 @@ export default function EscalasManager() {
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {escalasEdit
-                            .filter(item => {
-                              const mb = membros.find(m => String(m.id) === String(item.membroId))
-                              const pertenceAoCargo = item.grupoId 
-                                  ? item.grupoId === selectedCargoId 
-                                  : (mb && mb.cargoId === selectedCargoId)
-
-                              if (!pertenceAoCargo && selectedCargoId !== null) return false
-
-                              if (filterAllocatedNome) {
-                                const query = filterAllocatedNome.toLowerCase()
-                                const nome = mb ? mb.nomeCompleto : (item.nomeMembro || '')
-                                if (!nome.toLowerCase().includes(query)) return false
-                              }
-
-                              if (filterAllocatedStatus !== 'TODOS') {
-                                if (item.statusConfirmacao !== filterAllocatedStatus) return false
-                              }
-
-                              return true
-                            })
-                            .map((item, index) => {
-                              const mb = membros.find(m => String(m.id) === String(item.membroId))
-                              const isConcluido = (ev.status || 'AGENDADO') === 'CONCLUIDO'
+                          {allocatedListFiltered.map((item, index) => {
+                            const mb = membros.find(m => String(m.id) === String(item.membroId))
+                            const isConcluido = (ev.status || 'AGENDADO') === 'CONCLUIDO'
 
                               return (
                                 <div key={item.membroId || index} className="bg-white border border-slate-250 rounded-xl p-4 space-y-4 shadow-sm relative flex flex-col justify-between">
