@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public record MembroDetalhadoDTO(
+        Long id,
         String matricula,
         String nomeCompleto,
         String whatsapp,
@@ -51,6 +52,7 @@ public record MembroDetalhadoDTO(
         }
 
         return new MembroDetalhadoDTO(
+                m.getId(),
                 m.getId() != null ? String.format("%04d", m.getId()) : null,
                 m.getNomeCompleto(),
                 m.getWhatsapp(),

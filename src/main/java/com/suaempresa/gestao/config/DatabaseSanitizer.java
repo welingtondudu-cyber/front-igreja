@@ -48,6 +48,15 @@ public class DatabaseSanitizer implements CommandLineRunner {
         }
 
         try {
+            System.out.println("--- ENSURING EVENTOS SCHEMA HAS STATUS ---");
+            jdbcTemplate.execute("ALTER TABLE gestao.eventos ADD COLUMN IF NOT EXISTS status varchar(50) DEFAULT 'AGENDADO'");
+            jdbcTemplate.execute("UPDATE gestao.eventos SET status = 'AGENDADO' WHERE status IS NULL");
+            System.out.println("--- EVENTOS SCHEMA UPDATED SUCCESSFULLY ---");
+        } catch (Exception ex) {
+            System.err.println("Could not alter eventos table status: " + ex.getMessage());
+        }
+
+        try {
             List<Membro> membros = membroRepository.findAll();
             boolean modified = false;
 

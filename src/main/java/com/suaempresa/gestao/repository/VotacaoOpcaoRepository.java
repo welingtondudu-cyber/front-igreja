@@ -12,4 +12,6 @@ public interface VotacaoOpcaoRepository extends JpaRepository<VotacaoOpcao, Long
 
     @org.springframework.data.jpa.repository.Query("SELECT o FROM VotacaoOpcao o LEFT JOIN FETCH o.membro WHERE o.votacao.id = :votacaoId")
     List<VotacaoOpcao> findByVotacaoIdWithMembro(@org.springframework.data.repository.query.Param("votacaoId") Long votacaoId);
+
+    void deleteByVotacaoId(Long votacaoId);
 }

@@ -48,6 +48,7 @@ public class EscalaService {
                 .observacoes(dto.observacoes())
                 .imagemUrl(dto.imagemUrl())
                 .gruposNecessarios(grupos)
+                .status(dto.status() != null ? dto.status() : "AGENDADO")
                 .build();
         return EventoDTO.fromEntity(eventoRepository.save(e));
     }
@@ -65,6 +66,9 @@ public class EscalaService {
         }
         if (dto.gruposIds() != null) {
             e.setGruposNecessarios(grupoRepository.findAllById(dto.gruposIds()));
+        }
+        if (dto.status() != null) {
+            e.setStatus(dto.status());
         }
         return EventoDTO.fromEntity(eventoRepository.save(e));
     }
@@ -112,7 +116,7 @@ public class EscalaService {
                             esc.getMembro() != null ? esc.getMembro().getNomeCompleto() : "N/A",
                             esc.getFuncaoEspecifica() != null ? esc.getFuncaoEspecifica() : "",
                             esc.getStatusConfirmacao() != null ? esc.getStatusConfirmacao() : "PENDENTE"
-                    ))
+                     ))
                     .toList();
 
             dtos.add(new EscalaVisaoGeralDTO(
@@ -124,7 +128,8 @@ public class EscalaService {
                     e.getImagemUrl(),
                     statusEquipes,
                     gruposNecessariosIds,
-                    membrosEscalados
+                    membrosEscalados,
+                    e.getStatus()
             ));
         }
 
@@ -194,5 +199,14 @@ public class EscalaService {
         esc.setStatusConfirmacao(status.toUpperCase());
         esc.setMotivoRecusa(motivo);
         escalaRepository.save(esc);
+    }
+
+    @Transactional
+    public void excluirEvento(Long id) {
+        if (!eventoRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento não encontrado");
+        }
+        escalaRepository.deleteByEventoId(id);
+        eventoRepository.deleteById(id);
     }
 }

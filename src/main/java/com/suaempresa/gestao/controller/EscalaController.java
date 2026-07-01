@@ -77,4 +77,11 @@ public class EscalaController {
         escalaService.responderEscala(escalaId, status, motivo);
         return ResponseEntity.ok().build();
     }
+
+    @DeleteMapping("/eventos/{id}")
+    @Operation(summary = "Excluir evento/culto existente")
+    public ResponseEntity<Void> excluirEvento(@PathVariable Long id) {
+        escalaService.excluirEvento(id);
+        return ResponseEntity.ok().build();
+    }
 }

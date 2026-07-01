@@ -367,4 +367,39 @@ public class VotacaoService {
                 .map(v -> new VotacaoAdminDTO(v.getId(), v.getTitulo(), v.getAtiva() != null && v.getAtiva(), v.getDataCriacao(), v.getIdadeLimite() != null ? v.getIdadeLimite() : 18, v.getDataEncerramento()))
                 .toList();
     }
+
+    @Transactional
+    public void atualizarVotacao(Long id, CriarVotacaoRequest request) {
+        Votacao votacao = votacaoRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Votação não encontrada"));
+
+        votacao.setTitulo(request.titulo());
+        votacao.setDescricao(request.descricao());
+        votacao.setLimiteVotos(request.limiteVotos());
+        votacao.setIdadeLimite(request.idadeLimite() != null ? request.idadeLimite() : 18);
+
+        votacaoRepository.save(votacao);
+
+        // Remove old options and add new ones
+        votacaoOpcaoRepository.deleteByVotacaoId(id);
+
+        if (request.opcoes() != null) {
+            for (CriarVotacaoRequest.CriarOpcaoRequest opcaoReq : request.opcoes()) {
+                Membro membro = null;
+                if (opcaoReq.membroId() != null) {
+                    membro = membroRepository.findById(opcaoReq.membroId())
+                            .orElseThrow(() -> new MembroNaoEncontradoException(
+                                    "Membro com ID " + opcaoReq.membroId() + " não encontrado."));
+                }
+
+                VotacaoOpcao opcao = VotacaoOpcao.builder()
+                        .votacao(votacao)
+                        .tituloOpcao(membro != null ? membro.getNomeCompleto() : opcaoReq.tituloOpcao())
+                        .membro(membro)
+                        .build();
+
+                votacaoOpcaoRepository.save(opcao);
+            }
+        }
+    }
 }

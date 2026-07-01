@@ -5,6 +5,7 @@ import {
   Plus, X, HelpCircle, AlertCircle, Check, Search, Pencil, FileDown,
   Pause, RefreshCw, Layers, User, Upload, Trash2
 } from 'lucide-react'
+import RichTextEditor from './RichTextEditor'
 
 export default function TrilhasManager() {
   const membroIdSimulado = 1
@@ -447,9 +448,17 @@ export default function TrilhasManager() {
   const concluidas = conteudos.filter(c => c.concluido).length
   const percentual = totalAulas > 0 ? Math.round((concluidas / totalAulas) * 100) : 0
 
-  // Parser simples para renderizar imagens embutidas e links de imagem no texto
+  // Renderizar conteúdo rico (HTML do Tiptap ou markdown legado)
   const renderizarTextoRico = (texto) => {
     if (!texto) return null;
+    
+    // Se o conteúdo começa com tag HTML, renderizar como HTML (conteúdo do Tiptap)
+    const isHtml = texto.trim().startsWith('<');
+    if (isHtml) {
+      return <div dangerouslySetInnerHTML={{ __html: texto }} />;
+    }
+    
+    // Fallback: renderizar como markdown legado
     return texto.split('\n').map((linha, idx) => {
       const regexMarkdown = /!\[(.*?)\]\((.*?)\)/g;
       let match = regexMarkdown.exec(linha);
@@ -1071,7 +1080,6 @@ export default function TrilhasManager() {
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
-                      <BookOpen className="h-4 w-4 text-slate-350 mt-1.5" />
                     </div>
                   </div>
                 ))
@@ -1145,7 +1153,7 @@ export default function TrilhasManager() {
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
-                      {c.videoUrl ? <Video className="h-4 w-4 text-slate-400 mt-1.5" /> : <FileText className="h-4 w-4 text-slate-400 mt-1.5" />}
+
                     </div>
                   </div>
                 ))
@@ -1244,13 +1252,14 @@ export default function TrilhasManager() {
 
               {/* 👤 ATOR / AUTOR (MEMBRO) */}
               <div>
-                <label className="block text-[10px] font-bold text-slate-455 uppercase mb-1">Ator / Autor (Membro)</label>
+                <label className="block text-[10px] font-bold text-slate-455 uppercase mb-1">Autor *</label>
                 <select
                   value={trilhaAtorId}
                   onChange={(e) => setTrilhaAtorId(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none bg-white font-semibold text-slate-700"
+                  required
                 >
-                  <option value="">Selecione um Membro (Opcional)</option>
+                  <option value="">Selecione o Autor *</option>
                   {membros.map(m => (
                     <option key={m.id} value={m.id}>{m.nomeCompleto}</option>
                   ))}
@@ -1346,7 +1355,7 @@ export default function TrilhasManager() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-455 uppercase mb-1">Ordem/Posição (Opcional)</label>
+                  <label className="block text-[10px] font-bold text-slate-455 uppercase mb-1">Ordem/Posição</label>
                   <input
                     type="number"
                     min={1}
@@ -1361,13 +1370,14 @@ export default function TrilhasManager() {
               {/* 👤 ATOR / AUTOR (MEMBRO) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-455 uppercase mb-1">Ator / Autor (Membro)</label>
+                  <label className="block text-[10px] font-bold text-slate-455 uppercase mb-1">Autor *</label>
                   <select
                     value={conteudoAtorId}
                     onChange={(e) => setConteudoAtorId(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none bg-white font-semibold text-slate-700"
+                    required
                   >
-                    <option value="">Selecione um Membro (Opcional)</option>
+                    <option value="">Selecione o Autor *</option>
                     {membros.map(m => (
                       <option key={m.id} value={m.id}>{m.nomeCompleto}</option>
                     ))}
@@ -1375,14 +1385,47 @@ export default function TrilhasManager() {
                 </div>
                 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-455 uppercase mb-1">Material de Apoio (PDF URL - Opcional)</label>
-                  <input
-                    type="url"
-                    placeholder="https://exemplo.com/material.pdf"
-                    value={conteudoPdfUrl}
-                    onChange={(e) => setConteudoPdfUrl(e.target.value)}
-                    className="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-emerald-650"
-                  />
+                  <label className="block text-[10px] font-bold text-slate-455 uppercase mb-1">Material</label>
+                  <div className="flex items-center gap-2">
+                    {conteudoPdfUrl && (
+                      <a href={conteudoPdfUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold text-emerald-700 truncate max-w-[80px]" title={conteudoPdfUrl}>Arquivo</a>
+                    )}
+                    <div className="relative flex-grow">
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,image/*"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                              setConteudoPdfUrl(event.target.result);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="hidden"
+                        id="conteudoMaterialUploadInput"
+                      />
+                      <label
+                        htmlFor="conteudoMaterialUploadInput"
+                        className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none bg-white font-semibold text-slate-700 cursor-pointer flex items-center justify-between hover:bg-slate-50 transition-colors"
+                      >
+                        <span className="truncate pr-2">{conteudoPdfUrl ? 'Alterar Material' : 'Selecionar Material'}</span>
+                        <Upload className="h-4 w-4 text-slate-400 shrink-0" />
+                      </label>
+                    </div>
+                    {conteudoPdfUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setConteudoPdfUrl('')}
+                        className="p-2 border border-red-200 text-red-650 hover:bg-red-50 rounded-xl transition-colors shrink-0"
+                        title="Remover Material"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1399,14 +1442,10 @@ export default function TrilhasManager() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-455 uppercase mb-1">Texto de Estudo / Artigo Completo (Suporta Markdown/Imagens)</label>
-                <textarea
-                  placeholder="Digite aqui todo o texto de estudo. Para adicionar imagens, insira uma URL de imagem direta ou formato markdown ![desc](url)"
-                  rows={5}
+                <label className="block text-[10px] font-bold text-slate-455 uppercase mb-1">Texto de Estudo / Artigo Completo</label>
+                <RichTextEditor
                   value={conteudoTextoCompleto}
-                  onChange={(e) => setConteudoTextoCompleto(e.target.value)}
-                  onPaste={handlePasteImage}
-                  className="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-emerald-650 min-h-[140px]"
+                  onChange={(html) => setConteudoTextoCompleto(html)}
                 />
               </div>
 

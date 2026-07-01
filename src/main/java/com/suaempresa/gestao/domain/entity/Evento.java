@@ -38,6 +38,10 @@ public class Evento {
     @Column(name = "data_hora")
     private java.time.LocalDateTime dataHora;
 
+    @Builder.Default
+    @Column(nullable = true)
+    private String status = "AGENDADO";
+
     @PrePersist
     @PreUpdate
     public void prePersist() {

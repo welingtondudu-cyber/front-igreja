@@ -4,7 +4,9 @@ import {
   AlertCircle, UserCheck, FileText, Settings
 } from 'lucide-react'
 
-function CadastroEleicao({ onBack }) {
+import { useEffect } from 'react'
+
+function CadastroEleicao({ onBack, editingVotacao }) {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(null)
   const [error, setError] = useState(null)
@@ -19,6 +21,36 @@ function CadastroEleicao({ onBack }) {
   const [opcoes, setOpcoes] = useState([
     { tituloOpcao: '', membroId: '', membroNome: '', loadingMembro: false, membroErro: '' }
   ])
+
+  useEffect(() => {
+    if (editingVotacao) {
+      setTitulo(editingVotacao.titulo || '')
+      setDescricao(editingVotacao.descricao || '')
+      setLimiteVotos(editingVotacao.limiteVotos || 1)
+      setIdadeLimite(editingVotacao.idadeLimite || 18)
+      
+      const loadOpcoes = async () => {
+        try {
+          const res = await fetch(`/api/public/votacoes/${editingVotacao.id}/cedula`)
+          if (res.ok) {
+            const data = await res.json()
+            if (data.opcoes && data.opcoes.length > 0) {
+              setOpcoes(data.opcoes.map(op => ({
+                tituloOpcao: op.tituloOpcao || '',
+                membroId: op.membroId ? String(op.membroId) : '',
+                membroNome: op.membroId ? op.tituloOpcao : '',
+                loadingMembro: false,
+                membroErro: ''
+              })))
+            }
+          }
+        } catch (err) {
+          console.error('Erro ao buscar cedula da votacao', err)
+        }
+      }
+      loadOpcoes()
+    }
+  }, [editingVotacao])
 
   // Busca o nome do membro pelo ID digitado
   const fetchMembroNome = useCallback(async (index, id) => {
@@ -117,24 +149,31 @@ function CadastroEleicao({ onBack }) {
     }
 
     try {
-      const res = await fetch('/api/admin/votacoes', {
-        method: 'POST',
+      const url = editingVotacao ? `/api/admin/votacoes/${editingVotacao.id}` : '/api/admin/votacoes'
+      const method = editingVotacao ? 'PUT' : 'POST'
+      const res = await fetch(url, {
+        method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
 
       if (res.ok) {
-        const id = await res.json()
-        setSuccess(`Eleição cadastrada com sucesso! ID: ${id}`)
-        // Reset form
-        setTitulo('')
-        setDescricao('')
-        setLimiteVotos(1)
-        setIdadeLimite(18)
-        setOpcoes([{ tituloOpcao: '', membroId: '', membroNome: '', loadingMembro: false, membroErro: '' }])
+        if (editingVotacao) {
+          setSuccess('Eleição atualizada com sucesso!')
+          setTimeout(() => onBack(), 1500)
+        } else {
+          const id = await res.json().catch(() => null)
+          setSuccess(`Eleição cadastrada com sucesso!${id ? ` ID: ${id}` : ''}`)
+          // Reset form
+          setTitulo('')
+          setDescricao('')
+          setLimiteVotos(1)
+          setIdadeLimite(18)
+          setOpcoes([{ tituloOpcao: '', membroId: '', membroNome: '', loadingMembro: false, membroErro: '' }])
+        }
       } else {
         const problem = await res.json().catch(() => ({}))
-        setError(problem.detail || problem.message || 'Erro ao cadastrar eleição.')
+        setError(problem.detail || problem.message || 'Erro ao salvar eleição.')
       }
     } catch {
       setError('Falha de conexão com o servidor.')
@@ -155,7 +194,7 @@ function CadastroEleicao({ onBack }) {
           <ChevronLeft className="h-5 w-5" />
         </button>
         <div className="text-sm font-semibold text-slate-500">
-          Eleição / <span className="text-slate-800 font-bold">Cadastrar Eleição</span>
+          Eleição / <span className="text-slate-800 font-bold">{editingVotacao ? 'Editar Eleição' : 'Cadastrar Eleição'}</span>
         </div>
       </div>
 
@@ -364,10 +403,10 @@ function CadastroEleicao({ onBack }) {
             {loading ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
-                Cadastrando Eleição...
+                {editingVotacao ? 'Salvando Alterações...' : 'Cadastrando Eleição...'}
               </>
             ) : (
-              'CADASTRAR ELEIÇÃO'
+              editingVotacao ? 'SALVAR ALTERAÇÕES' : 'CADASTRAR ELEIÇÃO'
             )}
           </button>
         </form>

@@ -27,6 +27,7 @@ export default function EscalasManager() {
   const [observacoes, setObservacoes] = useState('')
   const [imagemUrl, setImagemUrl] = useState('')
   const [gruposSelecionados, setGruposSelecionados] = useState([]) // List of Grupo IDs
+  const [status, setStatus] = useState('AGENDADO')
 
   // Relação de voluntários temporários ao editar escalas de um evento
   const [escalasEdit, setEscalasEdit] = useState([]) // List of { membroId, grupoId, funcaoEspecifica, statusConfirmacao }
@@ -35,7 +36,9 @@ export default function EscalasManager() {
   const [membroLogadoId, setMembroLogadoId] = useState('')
 
   // Filtros ativos
-  const [buscaNome, setBuscaNome] = useState('')
+  const [filterNome, setFilterNome] = useState('')
+  const [filterStatus, setFilterStatus] = useState('TODOS')
+  const [filterPeriodo, setFilterPeriodo] = useState('TODOS')
 
   // Modal de justificativa de recusa
   const [showRecusaModal, setShowRecusaModal] = useState(false)
@@ -51,6 +54,78 @@ export default function EscalasManager() {
   const [loading, setLoading] = useState(false)
   const [loadingEquipe, setLoadingEquipe] = useState(false)
   const [feedback, setFeedback] = useState(null)
+
+  const filtrarEventos = (list) => {
+    return list.filter(ev => {
+      if (filterNome) {
+        const query = filterNome.toLowerCase()
+        const matchTitulo = ev.titulo && ev.titulo.toLowerCase().includes(query)
+        const matchObs = ev.observacoes && ev.observacoes.toLowerCase().includes(query)
+        if (!matchTitulo && !matchObs) return false
+      }
+      if (filterStatus !== 'TODOS') {
+        if ((ev.status || 'AGENDADO') !== filterStatus) return false
+      }
+      if (filterPeriodo !== 'TODOS') {
+        if (!ev.data) return false
+        const evDate = new Date(ev.data + 'T00:00:00')
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        
+        if (filterPeriodo === 'HOJE') {
+          const dateStr = ev.data
+          const todayStr = today.toISOString().split('T')[0]
+          if (dateStr !== todayStr) return false
+        } else if (filterPeriodo === 'PROX_7_DIAS') {
+          const limitDate = new Date(today)
+          limitDate.setDate(limitDate.getDate() + 7)
+          if (evDate < today || evDate > limitDate) return false
+        } else if (filterPeriodo === 'ESTE_MES') {
+          if (evDate.getMonth() !== today.getMonth() || evDate.getFullYear() !== today.getFullYear()) return false
+        } else if (filterPeriodo === 'PROXIMO_MES') {
+          const nextMonth = (today.getMonth() + 1) % 12
+          const nextMonthYear = today.getMonth() === 11 ? today.getFullYear() + 1 : today.getFullYear()
+          if (evDate.getMonth() !== nextMonth || evDate.getFullYear() !== nextMonthYear) return false
+        }
+      }
+      return true
+    })
+  }
+
+  const filtrarMinhasEscalas = (list) => {
+    return list.filter(esc => {
+      if (filterNome) {
+        const query = filterNome.toLowerCase()
+        if (!esc.tituloEvento || !esc.tituloEvento.toLowerCase().includes(query)) return false
+      }
+      if (filterStatus !== 'TODOS') {
+        if ((esc.statusEvento || 'AGENDADO') !== filterStatus) return false
+      }
+      if (filterPeriodo !== 'TODOS') {
+        if (!esc.dataEvento) return false
+        const evDate = new Date(esc.dataEvento + 'T00:00:00')
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        
+        if (filterPeriodo === 'HOJE') {
+          const dateStr = esc.dataEvento
+          const todayStr = today.toISOString().split('T')[0]
+          if (dateStr !== todayStr) return false
+        } else if (filterPeriodo === 'PROX_7_DIAS') {
+          const limitDate = new Date(today)
+          limitDate.setDate(limitDate.getDate() + 7)
+          if (evDate < today || evDate > limitDate) return false
+        } else if (filterPeriodo === 'ESTE_MES') {
+          if (evDate.getMonth() !== today.getMonth() || evDate.getFullYear() !== today.getFullYear()) return false
+        } else if (filterPeriodo === 'PROXIMO_MES') {
+          const nextMonth = (today.getMonth() + 1) % 12
+          const nextMonthYear = today.getMonth() === 11 ? today.getFullYear() + 1 : today.getFullYear()
+          if (evDate.getMonth() !== nextMonth || evDate.getFullYear() !== nextMonthYear) return false
+        }
+      }
+      return true
+    })
+  }
 
   useEffect(() => {
     fetchEventosVisaoGeral()
@@ -224,7 +299,32 @@ export default function EscalasManager() {
     setObservacoes(ev.observacoes || '')
     setImagemUrl(ev.imagemUrl || '')
     setGruposSelecionados(ev.gruposNecessariosIds || [])
+    setStatus(ev.status || 'AGENDADO')
     setShowModal(true)
+  }
+
+  const handleDeleteEventoClick = async (eventoId, e) => {
+    e.stopPropagation()
+    if (!window.confirm('Deseja realmente excluir este culto/evento e todas as suas escalas associadas?')) {
+      return
+    }
+    try {
+      const res = await fetch(`/api/escalas/eventos/${eventoId}`, {
+        method: 'DELETE'
+      })
+      if (res.ok) {
+        setFeedback({ tipo: 'success', texto: 'Culto/evento excluído com sucesso!' })
+        setTimeout(() => setFeedback(null), 3000)
+        fetchEventosVisaoGeral()
+      } else {
+        setFeedback({ tipo: 'error', texto: 'Falha ao excluir o culto/evento.' })
+        setTimeout(() => setFeedback(null), 3000)
+      }
+    } catch (err) {
+      console.error('Erro ao excluir evento', err)
+      setFeedback({ tipo: 'error', texto: 'Erro de conexão ao excluir.' })
+      setTimeout(() => setFeedback(null), 3000)
+    }
   }
 
   const handleAddEvento = async (e) => {
@@ -243,7 +343,8 @@ export default function EscalasManager() {
         hora: formattedHora,
         observacoes,
         imagemUrl,
-        gruposIds: gruposSelecionados
+        gruposIds: gruposSelecionados,
+        status: status
       }
       
       const url = editingEventoId ? `/api/escalas/eventos/${editingEventoId}` : '/api/escalas/eventos'
@@ -262,6 +363,7 @@ export default function EscalasManager() {
         setObservacoes('')
         setImagemUrl('')
         setGruposSelecionados([])
+        setStatus('AGENDADO')
         setEditingEventoId(null)
         fetchEventosVisaoGeral()
         setFeedback({ tipo: 'success', texto: editingEventoId ? 'Culto atualizado com sucesso!' : 'Culto cadastrado com sucesso!' })
@@ -501,6 +603,7 @@ export default function EscalasManager() {
               setObservacoes('')
               setImagemUrl('')
               setGruposSelecionados([])
+              setStatus('AGENDADO')
               setShowModal(true)
             }}
             className="flex items-center justify-center h-10 w-10 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl transition-all shadow-sm shrink-0"
@@ -531,15 +634,61 @@ export default function EscalasManager() {
         <div className="space-y-6">
           {!selectedEventoId ? (
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-              <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wider border-b border-slate-100 pb-2">Lista de Cultos Agendados</h3>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-3">
+                <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wider">Lista de Cultos Agendados</h3>
+                
+                {/* FILTROS DE PESQUISA E SELEÇÃO */}
+                <div className="flex flex-col sm:flex-row gap-3 items-center w-full sm:w-auto">
+                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 w-full sm:w-48 shadow-xs">
+                    <Search className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <input
+                      type="text"
+                      placeholder="Buscar..."
+                      value={filterNome}
+                      onChange={(e) => setFilterNome(e.target.value)}
+                      className="bg-transparent text-xs font-semibold text-slate-850 focus:outline-none w-full"
+                    />
+                  </div>
+
+                  {/* Status Selector */}
+                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-xs w-full sm:w-auto">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase">Status:</span>
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="bg-transparent text-xs font-bold text-slate-805 focus:outline-none cursor-pointer"
+                    >
+                      <option value="TODOS">Todos</option>
+                      <option value="AGENDADO">Agendado</option>
+                      <option value="CONCLUIDO">Concluído</option>
+                    </select>
+                  </div>
+
+                  {/* Period Selector */}
+                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-xs w-full sm:w-auto">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase">Período:</span>
+                    <select
+                      value={filterPeriodo}
+                      onChange={(e) => setFilterPeriodo(e.target.value)}
+                      className="bg-transparent text-xs font-bold text-slate-805 focus:outline-none cursor-pointer"
+                    >
+                      <option value="TODOS">Todos</option>
+                      <option value="HOJE">Hoje</option>
+                      <option value="PROX_7_DIAS">Próximos 7 dias</option>
+                      <option value="ESTE_MES">Este mês</option>
+                      <option value="PROXIMO_MES">Mês que vem</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
 
               {loading ? (
                 <div className="py-12 flex justify-center items-center">
                   <Loader2 className="h-8 w-8 text-emerald-700 animate-spin" />
                 </div>
-              ) : eventos.length > 0 ? (
+              ) : filtrarEventos(eventos).length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {eventos.map((ev) => {
+                  {filtrarEventos(eventos).map((ev) => {
                     const status = getEventoStatus(ev)
                     const borderLColor = status === 'CONFIRMADO' ? 'border-l-emerald-600' :
                                          status === 'RECUSADO' ? 'border-l-red-500' :
@@ -556,15 +705,29 @@ export default function EscalasManager() {
                               <span>{ev.hora}</span>
                               <span className="text-emerald-700 font-bold">{formatarData(ev.data)}</span>
                             </div>
-                            <button
-                              onClick={(e) => handleEditEventoClick(ev, e)}
-                              className="p-1 text-slate-450 hover:text-emerald-750 hover:bg-slate-100 rounded transition-all"
-                              title="Editar Informações"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={(e) => handleEditEventoClick(ev, e)}
+                                className="p-1 text-slate-450 hover:text-emerald-750 hover:bg-slate-100 rounded transition-all"
+                                title="Editar Informações"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={(e) => handleDeleteEventoClick(ev.id, e)}
+                                className="p-1 text-slate-455 hover:text-red-600 hover:bg-slate-100 rounded transition-all"
+                                title="Excluir Culto/Evento"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           </div>
                           <h4 className="font-extrabold text-slate-800 text-base mt-2">{ev.titulo}</h4>
+                          <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${
+                            (ev.status || 'AGENDADO') === 'CONCLUIDO'
+                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                              : 'bg-blue-50 border-blue-200 text-blue-700'
+                          }`}>{(ev.status || 'AGENDADO') === 'CONCLUIDO' ? 'Concluído' : 'Agendado'}</span>
                           
                           {/* List/Section of Status Operacional por Ministério exigido, always shown under title */}
                           <div className="space-y-1.5 mt-3 pt-2 border-t border-slate-100/60">
@@ -649,7 +812,7 @@ export default function EscalasManager() {
                 </div>
               ) : (
                 <div className="py-16 text-center text-slate-400 italic text-xs">
-                  Nenhum evento agendado na base de dados.
+                  Nenhum evento corresponde aos filtros selecionados.
                 </div>
               )}
             </div>
@@ -687,7 +850,14 @@ export default function EscalasManager() {
                       </button>
                     </div>
                     <div className="p-4 bg-emerald-700 text-white">
-                      <h2 className="text-sm font-black uppercase tracking-wide line-clamp-2">{ev.titulo}</h2>
+                      <div className="flex items-center justify-between">
+                        <h2 className="text-sm font-black uppercase tracking-wide line-clamp-2">{ev.titulo}</h2>
+                        <span className={`shrink-0 ml-2 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${
+                          (ev.status || 'AGENDADO') === 'CONCLUIDO'
+                            ? 'bg-emerald-900/40 border-emerald-400/40 text-emerald-200'
+                            : 'bg-white/15 border-white/25 text-white'
+                        }`}>{(ev.status || 'AGENDADO') === 'CONCLUIDO' ? 'Concluído' : 'Agendado'}</span>
+                      </div>
                       <span className="text-[10px] font-bold block mt-1 opacity-80">{formatarData(ev.data)} às {ev.hora}h</span>
                     </div>
                     
@@ -904,15 +1074,61 @@ export default function EscalasManager() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wider border-b border-slate-100 pb-2">Minhas Escalas Cadastradas</h3>
-            {/* Como não carregamos dinamicamente as escalas pessoais por falta de filtros múltiplos na query de escala do backend, mostramos um simulador baseado na pessoa selecionada */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wider">Minhas Escalas Cadastradas</h3>
+              
+              {/* FILTROS DE PESQUISA E SELEÇÃO */}
+              <div className="flex flex-col sm:flex-row gap-3 items-center w-full sm:w-auto">
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 w-full sm:w-48 shadow-xs">
+                  <Search className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Buscar..."
+                    value={filterNome}
+                    onChange={(e) => setFilterNome(e.target.value)}
+                    className="bg-transparent text-xs font-semibold text-slate-850 focus:outline-none w-full"
+                  />
+                </div>
+
+                {/* Status Selector */}
+                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-xs w-full sm:w-auto">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase">Status:</span>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="bg-transparent text-xs font-bold text-slate-855 focus:outline-none cursor-pointer"
+                  >
+                    <option value="TODOS">Todos</option>
+                    <option value="AGENDADO">Agendado</option>
+                    <option value="CONCLUIDO">Concluído</option>
+                  </select>
+                </div>
+
+                {/* Period Selector */}
+                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-xs w-full sm:w-auto">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase">Período:</span>
+                  <select
+                    value={filterPeriodo}
+                    onChange={(e) => setFilterPeriodo(e.target.value)}
+                    className="bg-transparent text-xs font-bold text-slate-855 focus:outline-none cursor-pointer"
+                  >
+                    <option value="TODOS">Todos</option>
+                    <option value="HOJE">Hoje</option>
+                    <option value="PROX_7_DIAS">Próximos 7 dias</option>
+                    <option value="ESTE_MES">Este mês</option>
+                    <option value="PROXIMO_MES">Mês que vem</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {loadingMinhasEscalas ? (
                 <div className="col-span-full py-12 flex justify-center items-center">
                   <Loader2 className="h-8 w-8 text-emerald-700 animate-spin" />
                 </div>
-              ) : minhasEscalas.length > 0 ? (
-                minhasEscalas.map((esc) => {
+              ) : filtrarMinhasEscalas(minhasEscalas).length > 0 ? (
+                filtrarMinhasEscalas(minhasEscalas).map((esc) => {
                   const borderLColor = esc.statusConfirmacao === 'CONFIRMADO' ? 'border-l-emerald-600' :
                                        esc.statusConfirmacao === 'RECUSADO' ? 'border-l-red-500' :
                                        'border-l-amber-500';
@@ -950,17 +1166,17 @@ export default function EscalasManager() {
                         )}
                       </div>
 
-                      <div className="flex gap-2 border-t border-slate-100 pt-3">
+                      <div className="flex gap-2 border-t border-slate-100 pt-3 shrink-0 mt-auto">
                         <button
                           onClick={() => handleConfirmarPresencaLogado(esc.id)}
-                          className="flex-grow py-1.5 px-3 bg-emerald-650 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs flex justify-center items-center gap-1 transition-all"
+                          className="flex-grow py-2 px-3 bg-emerald-650 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-sm flex justify-center items-center gap-1 transition-all"
                         >
                           <Check className="h-4 w-4" />
                           Confirmar
                         </button>
                         <button
                           onClick={() => handleOpenRecusaModal(esc.id)}
-                          className="flex-grow py-1.5 px-3 border border-red-200 hover:bg-red-50 text-red-750 rounded-lg text-xs font-bold shadow-xs flex justify-center items-center gap-1 transition-all"
+                          className="flex-grow py-2 px-3 border border-red-200 hover:bg-red-50 text-red-750 rounded-lg text-xs font-bold shadow-sm flex justify-center items-center gap-1 transition-all"
                         >
                           <X className="h-4 w-4" />
                           Recusar
@@ -971,7 +1187,7 @@ export default function EscalasManager() {
                 })
               ) : (
                 <div className="col-span-full py-16 text-center text-slate-400 italic text-xs">
-                  Nenhuma escala atribuída para o voluntário selecionado no momento.
+                  Nenhuma escala corresponde aos filtros selecionados.
                 </div>
               )}
             </div>
@@ -1030,6 +1246,18 @@ export default function EscalasManager() {
                     className="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-emerald-600"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-450 uppercase mb-1">Status *</label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-emerald-600 bg-white font-semibold text-slate-700 cursor-pointer"
+                >
+                  <option value="AGENDADO">AGENDADO</option>
+                  <option value="CONCLUIDO">CONCLUÍDO</option>
+                </select>
               </div>
 
               <div>

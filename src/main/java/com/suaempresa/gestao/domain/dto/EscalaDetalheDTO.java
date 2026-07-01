@@ -16,7 +16,8 @@ public record EscalaDetalheDTO(
         String motivoRecusa,
         String tituloEvento,
         java.time.LocalDate dataEvento,
-        java.time.LocalTime horaEvento
+        java.time.LocalTime horaEvento,
+        String statusEvento
 ) {
     public static EscalaDetalheDTO fromEntity(Escala esc) {
         return new EscalaDetalheDTO(
@@ -33,7 +34,8 @@ public record EscalaDetalheDTO(
                 esc.getMotivoRecusa(),
                 esc.getEvento() != null ? esc.getEvento().getTitulo() : null,
                 esc.getEvento() != null ? esc.getEvento().getData() : null,
-                esc.getEvento() != null ? esc.getEvento().getHora() : null
+                esc.getEvento() != null ? esc.getEvento().getHora() : null,
+                esc.getEvento() != null ? esc.getEvento().getStatus() : "AGENDADO"
         );
     }
 }

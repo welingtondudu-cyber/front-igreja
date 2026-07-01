@@ -318,7 +318,7 @@ export default function NoticiasManager() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-450 uppercase mb-1">Sociedade Interna / Destinatário *</label>
+                  <label className="block text-[10px] font-bold text-slate-450 uppercase mb-1">Sociedade Interna</label>
                   <select
                     value={sociedade}
                     onChange={(e) => setSociedade(e.target.value)}

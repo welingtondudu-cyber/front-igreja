@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, ChevronRight, FileText, Calendar, Loader2, Play } from 'lucide-react'
+import { Plus, ChevronRight, FileText, Calendar, Loader2, Play, Pencil } from 'lucide-react'
 import CadastroEleicao from './CadastroEleicao'
 import RestricoesManager from './RestricoesManager'
 
@@ -33,6 +33,12 @@ export default function EleicoesManager({ onNavigate }) {
   if (viewState === 'create') {
     return (
       <CadastroEleicao onBack={() => setViewState('list')} />
+    )
+  }
+
+  if (viewState === 'edit-votacao' && selectedEleicao) {
+    return (
+      <CadastroEleicao editingVotacao={selectedEleicao} onBack={() => setViewState('list')} />
     )
   }
 
@@ -106,6 +112,16 @@ export default function EleicoesManager({ onNavigate }) {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setSelectedEleicao(e)
+                              setViewState('edit-votacao')
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-all"
+                            title="Editar Eleição"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
                           <button
                             onClick={() => {
                               setSelectedEleicao(e)

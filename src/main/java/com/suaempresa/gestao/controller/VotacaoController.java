@@ -106,4 +106,11 @@ public class VotacaoController {
     public ResponseEntity<java.util.List<VotacaoAdminDTO>> listarTodasParaAdmin() {
         return ResponseEntity.ok(votacaoService.listarTodasParaAdmin());
     }
+
+    @PutMapping("/api/admin/votacoes/{id}")
+    @Operation(summary = "Editar votação (Admin)", description = "Atualiza os dados cadastrais da votação, como título, limite de votos por eleitor, idade mínima e opções.")
+    public ResponseEntity<Void> atualizarVotacao(@PathVariable Long id, @RequestBody @Valid CriarVotacaoRequest request) {
+        votacaoService.atualizarVotacao(id, request);
+        return ResponseEntity.ok().build();
+    }
 }

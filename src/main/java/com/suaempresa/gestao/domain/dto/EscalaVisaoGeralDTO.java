@@ -14,5 +14,6 @@ public record EscalaVisaoGeralDTO(
         String imagemUrl,
         Map<String, String> statusEquipes,
         List<Long> gruposNecessariosIds,
-        List<EscalaMembroResumoDTO> membrosEscalados
+        List<EscalaMembroResumoDTO> membrosEscalados,
+        String status
 ) {}
