@@ -584,10 +584,10 @@ export default function TrilhasManager() {
           </div>
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-stretch gap-2 w-full sm:w-auto">
           <button
             onClick={() => { setAdminMode(false); setSelectedTrilha(null); }}
-            className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-bold transition-all border ${
+            className={`flex-1 sm:flex-initial px-4 py-2.5 min-h-[44px] flex items-center justify-center text-center rounded-xl text-xs font-bold transition-all border ${
               !adminMode 
                 ? 'bg-emerald-700 border-emerald-700 text-white shadow-sm'
                 : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
@@ -597,7 +597,7 @@ export default function TrilhasManager() {
           </button>
           <button
             onClick={() => { setAdminMode(true); setSelectedTrilha(null); }}
-            className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-bold transition-all border ${
+            className={`flex-1 sm:flex-initial px-4 py-2.5 min-h-[44px] flex items-center justify-center text-center rounded-xl text-xs font-bold transition-all border ${
               adminMode 
                 ? 'bg-emerald-700 border-emerald-700 text-white shadow-sm'
                 : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'

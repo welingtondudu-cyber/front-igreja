@@ -59,6 +59,14 @@ public class DatabaseSanitizer implements CommandLineRunner {
         }
 
         try {
+            System.out.println("--- ENSURING EVENTOS SCHEMA HAS GRUPO_CONVOCADO_ID ---");
+            jdbcTemplate.execute("ALTER TABLE gestao.eventos ADD COLUMN IF NOT EXISTS grupo_convocado_id bigint");
+            System.out.println("--- EVENTOS SCHEMA GRUPO_CONVOCADO_ID UPDATED SUCCESSFULLY ---");
+        } catch (Exception ex) {
+            System.err.println("Could not alter eventos table grupo_convocado_id: " + ex.getMessage());
+        }
+
+        try {
             List<Membro> membros = membroRepository.findAll();
             boolean modified = false;
 

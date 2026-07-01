@@ -20,5 +20,6 @@ public record EventoFormDTO(
         String imagemUrl,
         List<Long> cargosIds,
         List<Long> gruposIds,
+        Long grupoConvocadoId,
         String status
 ) {}

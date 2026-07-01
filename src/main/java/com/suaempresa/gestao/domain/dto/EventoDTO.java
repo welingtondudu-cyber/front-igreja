@@ -14,6 +14,8 @@ public record EventoDTO(
         String imagemUrl,
         List<CargoResumoDTO> cargosExigidos,
         List<GrupoResumoDTO> gruposExigidos,
+        Long grupoConvocadoId,
+        String grupoConvocadoNome,
         String status
 ) {
     public static EventoDTO fromEntity(Evento e) {
@@ -32,6 +34,8 @@ public record EventoDTO(
                 e.getImagemUrl(),
                 cargos,
                 grupos,
+                e.getGrupoConvocado() != null ? e.getGrupoConvocado().getId() : null,
+                e.getGrupoConvocado() != null ? e.getGrupoConvocado().getNomeGrupo() : null,
                 e.getStatus()
         );
     }

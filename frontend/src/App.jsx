@@ -88,6 +88,23 @@ function App() {
   const [loadingCalendario, setLoadingCalendario] = useState(false)
   const [filtroMes, setFiltroMes] = useState(new Date().getMonth() + 1) // 1-12
   const [filtroAno, setFiltroAno] = useState(new Date().getFullYear()) // 2026
+  const [filtroConvocacao, setFiltroConvocacao] = useState('TODOS')
+  const [sociedades, setSociedades] = useState([])
+
+  useEffect(() => {
+    const fetchSociedades = async () => {
+      try {
+        const res = await fetch('/api/grupos')
+        if (res.ok) {
+          const data = await res.json()
+          setSociedades(data.filter(g => g.tipoGrupo === 'SOCIEDADES_INTERNAS' || g.tipoGrupo === 'SOCIEDADE_INTERNA'))
+        }
+      } catch (err) {
+        console.error(err)
+      }
+    }
+    fetchSociedades()
+  }, [])
 
   useEffect(() => {
     if (currentView === 'calendario') {
@@ -477,8 +494,67 @@ function App() {
     const numDays = new Date(filtroAno, filtroMes, 0).getDate()
     const firstDayIndex = new Date(filtroAno, filtroMes - 1, 1).getDay()
 
+    // Helper to get event color scheme
+    const getEventColors = (grupoNome) => {
+      if (!grupoNome) {
+        return {
+          badge: 'bg-emerald-600 text-white',
+          cellBorder: 'border-emerald-600 bg-emerald-50/10',
+          cellText: 'text-emerald-800'
+        };
+      }
+      const name = grupoNome.toUpperCase();
+      if (name.includes('SAF')) {
+        return {
+          badge: 'bg-rose-500 text-white hover:bg-rose-400',
+          cellBorder: 'border-rose-500 bg-rose-50/10',
+          cellText: 'text-rose-800'
+        };
+      }
+      if (name.includes('UPH')) {
+        return {
+          badge: 'bg-blue-600 text-white hover:bg-blue-500',
+          cellBorder: 'border-blue-600 bg-blue-50/10',
+          cellText: 'text-blue-800'
+        };
+      }
+      if (name.includes('UMP') || name.includes('JOVENS') || name.includes('MOCIDADE')) {
+        return {
+          badge: 'bg-violet-600 text-white hover:bg-violet-500',
+          cellBorder: 'border-violet-600 bg-violet-50/10',
+          cellText: 'text-violet-800'
+        };
+      }
+      if (name.includes('UPA') || name.includes('ADOLESCENTES')) {
+        return {
+          badge: 'bg-amber-500 text-slate-900 hover:bg-amber-450',
+          cellBorder: 'border-amber-500 bg-amber-50/10',
+          cellText: 'text-amber-800'
+        };
+      }
+      if (name.includes('UCP') || name.includes('CRIANÇA') || name.includes('INFANTIL')) {
+        return {
+          badge: 'bg-cyan-500 text-white hover:bg-cyan-400',
+          cellBorder: 'border-cyan-500 bg-cyan-50/10',
+          cellText: 'text-cyan-800'
+        };
+      }
+      return {
+        badge: 'bg-indigo-650 text-white hover:bg-indigo-550',
+        cellBorder: 'border-indigo-600 bg-indigo-50/10',
+        cellText: 'text-indigo-800'
+      };
+    };
+
+    // Filter events by Convocação/Escopo
+    const filteredEventos = eventosCalendario.filter(ev => {
+      if (filtroConvocacao === 'TODOS') return true;
+      if (filtroConvocacao === 'IGREJA') return !ev.grupoConvocadoId;
+      return ev.grupoConvocadoId === Number(filtroConvocacao);
+    });
+
     // Filter events of the current month/year
-    const monthEvents = eventosCalendario.filter(ev => {
+    const monthEvents = filteredEventos.filter(ev => {
       if (!ev.data) return false
       const [y, m, d] = ev.data.split('-').map(Number)
       return y === filtroAno && m === filtroMes
@@ -499,12 +575,28 @@ function App() {
           <p className="text-sm text-emerald-100 mt-2 max-w-xl">Acompanhe todos os cultos, assembleias, reuniões e eventos agendados para a nossa comunidade local.</p>
         </div>
 
-        {/* Filtros de Mês e Ano */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white p-4 border border-slate-200 rounded-2xl shadow-sm">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Filtrar por Período:</span>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+        {/* Filtros de Mês, Ano e Convocação */}
+        <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between bg-white p-4 border border-slate-200 rounded-2xl shadow-sm">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center shrink-0">Filtrar por Período e Convocação:</span>
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+            {/* Seletor de Convocação */}
+            <div className="flex items-center gap-2 bg-slate-55/10 border border-slate-250 rounded-xl px-3 py-1.5 shadow-xs w-full sm:w-60">
+              <span className="text-xs text-slate-500 whitespace-nowrap">Convocação:</span>
+              <select
+                value={filtroConvocacao}
+                onChange={(e) => setFiltroConvocacao(e.target.value)}
+                className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer w-full"
+              >
+                <option value="TODOS">Todos os Eventos</option>
+                <option value="IGREJA">Toda a Igreja (Geral)</option>
+                {sociedades.map(s => (
+                  <option key={s.id} value={s.id}>{s.nomeGrupo}</option>
+                ))}
+              </select>
+            </div>
+
             {/* Seletor do Mês */}
-            <div className="flex items-center gap-2 bg-slate-55/10 border border-slate-250 rounded-xl px-3 py-1.5 shadow-xs w-full sm:w-48">
+            <div className="flex items-center gap-2 bg-slate-55/10 border border-slate-250 rounded-xl px-3 py-1.5 shadow-xs w-full sm:w-44">
               <span className="text-xs text-slate-500">Mês:</span>
               <select
                 value={filtroMes}
@@ -552,29 +644,31 @@ function App() {
               {[...Array(numDays)].map((_, index) => {
                 const dayNum = index + 1
                 const dateString = `${filtroAno}-${String(filtroMes).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`
-                const dayEvents = eventosCalendario.filter(ev => ev.data === dateString)
+                const dayEvents = filteredEventos.filter(ev => ev.data === dateString)
                 const hasEvent = dayEvents.length > 0
                 
+                const colors = hasEvent ? getEventColors(dayEvents[0].grupoConvocadoNome) : null
+                const cellClass = hasEvent 
+                  ? `${colors.cellBorder} ${colors.cellText}` 
+                  : 'border-slate-200 bg-white'
+
                 return (
-                  <div key={dayNum} className={`border rounded-xl min-h-[75px] p-2 flex flex-col justify-between transition-colors relative hover:bg-slate-55/30 cursor-pointer ${
-                    hasEvent ? 'border-emerald-600 bg-emerald-50/10' : 'border-slate-200 bg-white'
-                  }`} onClick={() => {
-                    if (hasEvent) {
-                      // Navigate to scales or display detail in inline popup if needed
-                    }
-                  }}>
-                    <span className={`text-xs font-bold ${hasEvent ? 'text-emerald-800' : 'text-slate-500'}`}>{dayNum}</span>
+                  <div key={dayNum} className={`border rounded-xl min-h-[75px] p-2 flex flex-col justify-between transition-all relative hover:bg-slate-55/35 cursor-pointer ${cellClass}`}>
+                    <span className={`text-xs font-bold ${hasEvent ? colors.cellText : 'text-slate-500'}`}>{dayNum}</span>
                     {hasEvent && (
                       <div className="space-y-1 mt-1">
-                        {dayEvents.map(e => (
-                          <span 
-                            key={e.id} 
-                            className="text-[8px] leading-tight font-extrabold bg-emerald-700 text-white px-1.5 py-0.5 rounded block truncate"
-                            title={`${e.titulo} (${e.hora ? e.hora.substring(0, 5) : ''})`}
-                          >
-                            {e.titulo}
-                          </span>
-                        ))}
+                        {dayEvents.map(e => {
+                          const eColors = getEventColors(e.grupoConvocadoNome);
+                          return (
+                            <span 
+                              key={e.id} 
+                              className={`text-[8px] leading-tight font-extrabold px-1.5 py-0.5 rounded block truncate ${eColors.badge}`}
+                              title={`${e.titulo} (${e.hora ? e.hora.substring(0, 5) : ''})`}
+                            >
+                              {e.titulo}
+                            </span>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -609,15 +703,20 @@ function App() {
                 monthEvents.map((ev) => {
                   const day = ev.data ? Number(ev.data.split('-')[2]) : 1;
                   const monthAbbr = meses.find(m => m.value === filtroMes)?.label.substring(0, 3).toUpperCase() || 'MES';
+                  const eColors = getEventColors(ev.grupoConvocadoNome);
                   return (
                     <div key={ev.id} className="flex gap-3 items-start p-3 bg-slate-55/10 hover:bg-slate-100/85 rounded-xl transition-all border border-slate-150 shadow-xs">
-                      <div className="bg-emerald-700 text-white font-mono font-bold text-sm px-2.5 py-1.5 rounded-lg flex flex-col items-center shrink-0 min-w-[45px]">
+                      <div className={`text-white font-mono font-bold text-sm px-2.5 py-1.5 rounded-lg flex flex-col items-center shrink-0 min-w-[45px] ${eColors.badge.split(' ')[0]}`}>
                         <span>{day}</span>
                         <span className="text-[8px] uppercase tracking-wider font-sans">{monthAbbr}</span>
                       </div>
                       <div className="space-y-0.5">
-                        <h4 className="font-bold text-slate-850 text-xs line-clamp-1">{ev.titulo}</h4>
-                        <p className="text-[10px] text-slate-500 font-semibold">{ev.hora ? ev.hora.substring(0, 5) : ''}h • Templo Principal</p>
+                        <h4 className="font-bold text-slate-800 text-xs line-clamp-1">{ev.titulo}</h4>
+                        <p className="text-[10px] text-slate-500 font-semibold flex items-center gap-1">
+                          <span>{ev.hora ? ev.hora.substring(0, 5) : ''}h</span>
+                          <span>•</span>
+                          <span className="text-emerald-700 font-bold">{ev.grupoConvocadoNome || 'Toda a Igreja'}</span>
+                        </p>
                         {ev.observacoes && (
                           <p className="text-[9px] text-slate-400 italic line-clamp-1 mt-1">{ev.observacoes}</p>
                         )}

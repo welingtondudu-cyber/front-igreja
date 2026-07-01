@@ -41,6 +41,10 @@ public class EscalaService {
         if (dto.gruposIds() != null && !dto.gruposIds().isEmpty()) {
             grupos = grupoRepository.findAllById(dto.gruposIds());
         }
+        Grupo grupoConvocado = null;
+        if (dto.grupoConvocadoId() != null) {
+            grupoConvocado = grupoRepository.findById(dto.grupoConvocadoId()).orElse(null);
+        }
         Evento e = Evento.builder()
                 .titulo(dto.titulo())
                 .data(dto.data())
@@ -48,6 +52,7 @@ public class EscalaService {
                 .observacoes(dto.observacoes())
                 .imagemUrl(dto.imagemUrl())
                 .gruposNecessarios(grupos)
+                .grupoConvocado(grupoConvocado)
                 .status(dto.status() != null ? dto.status() : "AGENDADO")
                 .build();
         return EventoDTO.fromEntity(eventoRepository.save(e));
@@ -65,7 +70,22 @@ public class EscalaService {
             e.setImagemUrl(dto.imagemUrl());
         }
         if (dto.gruposIds() != null) {
+            // Remover escalas dos grupos que foram desassociados do evento
+            List<Escala> escalasExistentes = escalaRepository.findByEventoId(id);
+            Set<Long> gruposRemovidos = escalasExistentes.stream()
+                    .filter(esc -> esc.getGrupo() != null && !dto.gruposIds().contains(esc.getGrupo().getId()))
+                    .map(esc -> esc.getGrupo().getId())
+                    .collect(Collectors.toSet());
+            for (Long grupoRemovido : gruposRemovidos) {
+                escalaRepository.deleteByEventoIdAndGrupoId(id, grupoRemovido);
+            }
+            escalaRepository.flush();
             e.setGruposNecessarios(grupoRepository.findAllById(dto.gruposIds()));
+        }
+        if (dto.grupoConvocadoId() != null) {
+            e.setGrupoConvocado(grupoRepository.findById(dto.grupoConvocadoId()).orElse(null));
+        } else {
+            e.setGrupoConvocado(null);
         }
         if (dto.status() != null) {
             e.setStatus(dto.status());
@@ -129,6 +149,8 @@ public class EscalaService {
                     statusEquipes,
                     gruposNecessariosIds,
                     membrosEscalados,
+                    e.getGrupoConvocado() != null ? e.getGrupoConvocado().getId() : null,
+                    e.getGrupoConvocado() != null ? e.getGrupoConvocado().getNomeGrupo() : null,
                     e.getStatus()
             ));
         }

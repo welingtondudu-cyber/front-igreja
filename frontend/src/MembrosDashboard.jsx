@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   Users, Award, ShieldCheck, PieChart, BarChart3,
-  RefreshCw, AlertCircle, Cake, Sparkles, UserCheck, Calendar
+  RefreshCw, AlertCircle, Cake, Sparkles, UserCheck, Calendar, ChevronDown
 } from 'lucide-react'
 
 export default function MembrosDashboard() {
@@ -9,9 +9,12 @@ export default function MembrosDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Current year for admissions filter
-  const [selectedAno, setSelectedAno] = useState(new Date().getFullYear())
-  const [compararAno, setCompararAno] = useState('')
+  // Selected years for admissions filter (max 2 selected)
+  const [selectedYears, setSelectedYears] = useState([new Date().getFullYear()])
+  const [showYearDropdown, setShowYearDropdown] = useState(false)
+
+  const selectedAno = selectedYears[0] || new Date().getFullYear()
+  const compararAno = selectedYears[1] || ''
 
   const fetchDashboardData = async () => {
     setLoading(true)
@@ -161,10 +164,7 @@ export default function MembrosDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
         
         {/* TOTAL ACTIVE */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex items-center gap-4 hover:shadow-sm transition-shadow">
-          <div className="bg-emerald-50 text-emerald-700 p-3 rounded-full shrink-0">
-            <Users className="h-6 w-6" />
-          </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-sm transition-shadow">
           <div>
             <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Membros Ativos</span>
             <span className="text-2xl font-bold text-slate-800">{data.totalMembrosAtivos}</span>
@@ -172,10 +172,7 @@ export default function MembrosDashboard() {
         </div>
 
         {/* DIACONOS */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex items-center gap-4 hover:shadow-sm transition-shadow">
-          <div className="bg-sky-50 text-sky-700 p-3 rounded-full shrink-0">
-            <Award className="h-6 w-6" />
-          </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-sm transition-shadow">
           <div>
             <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Diáconos Ativos</span>
             <span className="text-2xl font-bold text-slate-800">{data.totalDiaconos}</span>
@@ -183,10 +180,7 @@ export default function MembrosDashboard() {
         </div>
 
         {/* PRESBITEROS */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex items-center gap-4 hover:shadow-sm transition-shadow">
-          <div className="bg-indigo-50 text-indigo-700 p-3 rounded-full shrink-0">
-            <ShieldCheck className="h-6 w-6" />
-          </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-sm transition-shadow">
           <div>
             <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Presbíteros Ativos</span>
             <span className="text-2xl font-bold text-slate-800">{data.totalPresbiteros}</span>
@@ -194,10 +188,7 @@ export default function MembrosDashboard() {
         </div>
 
         {/* SOCIEDADE INTERNA INTEGRATION */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex items-center gap-4 hover:shadow-sm transition-shadow">
-          <div className="bg-rose-50 text-rose-600 p-3 rounded-full shrink-0">
-            <PieChart className="h-6 w-6" />
-          </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-sm transition-shadow">
           <div>
             <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sociedades Internas</span>
             <span className="text-2xl font-bold text-slate-800">{formatPct(data.percentualSociedadeInterna)}%</span>
@@ -205,10 +196,7 @@ export default function MembrosDashboard() {
         </div>
 
         {/* MINISTERIOS ENGAGEMENT */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex items-center gap-4 hover:shadow-sm transition-shadow">
-          <div className="bg-amber-50 text-amber-600 p-3 rounded-full shrink-0">
-            <BarChart3 className="h-6 w-6" />
-          </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:shadow-sm transition-shadow">
           <div>
             <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Taxa de Ministérios</span>
             <span className="text-2xl font-bold text-slate-800">{formatPct(data.percentualMinisterio)}%</span>
@@ -229,46 +217,60 @@ export default function MembrosDashboard() {
             </div>
             
             {/* DUAL YEAR SELECTORS */}
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Principal:</span>
-                <select
-                  value={selectedAno}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value)
-                    setSelectedAno(val)
-                    if (compararAno === val) {
-                      setCompararAno('')
-                    }
-                  }}
-                  className="border border-slate-200 bg-white text-slate-800 rounded-xl px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:border-emerald-600 transition-colors shadow-2xs"
-                >
-                  {anosDisponiveis.map((y) => (
-                    <option key={y} value={y}>
-                      Ano {y} ({totalPorAno[y] || 0} novos)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Comparar:</span>
-                <select
-                  value={compararAno || ''}
-                  onChange={(e) => {
-                    const val = e.target.value
-                    setCompararAno(val ? parseInt(val) : '')
-                  }}
-                  className="border border-slate-200 bg-white text-slate-800 rounded-xl px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:border-emerald-600 transition-colors shadow-2xs"
-                >
-                  <option value="">Nenhum</option>
-                  {anosDisponiveis.filter(y => y !== selectedAno).map((y) => (
-                    <option key={y} value={y}>
-                      Ano {y} ({totalPorAno[y] || 0} novos)
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* SINGLE MULTI-SELECT YEAR SELECTOR */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowYearDropdown(!showYearDropdown)}
+                className="border border-slate-250 bg-white text-slate-800 rounded-xl px-3 py-2 text-xs font-bold hover:bg-slate-50 focus:outline-none transition-colors shadow-2xs flex items-center gap-2 select-none"
+              >
+                <span>{selectedYears.length === 1 ? `Ano ${selectedYears[0]}` : `Anos ${selectedYears.join(' e ')}`}</span>
+                <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+              </button>
+              
+              {showYearDropdown && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowYearDropdown(false)} />
+                  <div className="absolute right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-20 p-2 min-w-[210px] max-h-60 overflow-y-auto space-y-1 animate-in fade-in duration-150">
+                    <div className="px-2 py-1 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 mb-1">
+                      Selecione até 2 anos:
+                    </div>
+                    {anosDisponiveis.map((y) => {
+                      const isChecked = selectedYears.includes(y)
+                      const isDisabled = !isChecked && selectedYears.length >= 2
+                      return (
+                        <label
+                          key={y}
+                          className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-bold cursor-pointer transition-colors select-none ${
+                            isDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-slate-55/40 text-slate-700'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            disabled={isDisabled}
+                            onChange={() => {
+                              if (isChecked) {
+                                if (selectedYears.length > 1) {
+                                  setSelectedYears(selectedYears.filter(x => x !== y))
+                                }
+                              } else {
+                                if (selectedYears.length < 2) {
+                                  setSelectedYears([...selectedYears, y].sort((a, b) => b - a))
+                                }
+                              }
+                            }}
+                            className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer disabled:cursor-not-allowed"
+                          />
+                          <span>
+                            {y} <span className="text-[10px] text-slate-400 font-medium">({totalPorAno[y] || 0} novos)</span>
+                          </span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           </div>
 

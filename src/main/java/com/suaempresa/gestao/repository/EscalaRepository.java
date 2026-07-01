@@ -11,7 +11,14 @@ import java.util.List;
 public interface EscalaRepository extends JpaRepository<Escala, Long> {
     List<Escala> findByEventoId(Long eventoId);
     List<Escala> findByMembroId(Long membroId);
-    void deleteByEventoId(Long eventoId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("DELETE FROM Escala e WHERE e.evento.id = :eventoId")
+    void deleteByEventoId(@Param("eventoId") Long eventoId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("DELETE FROM Escala e WHERE e.evento.id = :eventoId AND e.grupo.id = :grupoId")
+    void deleteByEventoIdAndGrupoId(@Param("eventoId") Long eventoId, @Param("grupoId") Long grupoId);
 
     @Query("SELECT DISTINCT e.membro.id FROM Escala e " +
            "WHERE e.grupo.id = :grupoId " +

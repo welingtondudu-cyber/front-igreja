@@ -55,9 +55,12 @@ public class Evento {
     @Builder.Default
     private List<Cargo> cargosNecessarios = new ArrayList<>();
 
-    // New relationship for required groups (sociedades internas / ministérios)
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(schema = "gestao", name = "eventos_grupos_necessarios", joinColumns = @JoinColumn(name = "evento_id"), inverseJoinColumns = @JoinColumn(name = "grupo_id"))
     @Builder.Default
     private List<Grupo> gruposNecessarios = new ArrayList<>();
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "grupo_convocado_id")
+    private Grupo grupoConvocado;
 }

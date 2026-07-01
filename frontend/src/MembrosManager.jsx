@@ -53,6 +53,7 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
   // Modal States
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [selectedMember, setSelectedMember] = useState(null)
+  const [zoomedImage, setZoomedImage] = useState(null)
 
   // Member Details Sub-Tabs and History
   const [activeDetailTab, setActiveDetailTab] = useState('cadastro')
@@ -909,7 +910,9 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
                           <img
                             src={member.fotoPerfilUrl}
                             alt={member.nomeCompleto}
-                            className="w-9 h-9 rounded-full object-cover border border-slate-100 shrink-0"
+                            onClick={(e) => { e.stopPropagation(); setZoomedImage(member.fotoPerfilUrl); }}
+                            className="w-9 h-9 rounded-full object-cover border border-slate-100 shrink-0 cursor-pointer hover:opacity-85 transition-opacity"
+                            title="Clique para expandir"
                             onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
                           />
                         ) : null}
@@ -1008,8 +1011,8 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
 
       {/* DETAIL MODAL */}
       {showDetailModal && selectedMember && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-          <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto py-8">
+          <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200 flex flex-col my-auto max-h-[calc(100vh-4rem)] sm:max-h-[90vh]">
             {/* Modal Header */}
             <div className="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-start">
               <div className="flex items-center gap-4">
@@ -1018,7 +1021,9 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
                     <img
                       src={selectedMember.fotoPerfilUrl}
                       alt={selectedMember.nomeCompleto}
-                      className="w-full h-full rounded-full object-cover"
+                      onClick={() => setZoomedImage(selectedMember.fotoPerfilUrl)}
+                      className="w-full h-full rounded-full object-cover cursor-pointer hover:opacity-85 transition-opacity"
+                      title="Clique para expandir"
                       onError={(e) => { e.target.style.display = 'none' }}
                     />
                   ) : getInitials(selectedMember.nomeCompleto)}
@@ -1493,12 +1498,18 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
                           </label>
                           <div className="flex items-center gap-3">
                             {formData.fotoPerfilUrl && (
-                              <img src={formData.fotoPerfilUrl} alt="Preview" className="w-12 h-12 rounded-xl object-cover border border-slate-200" />
+                              <img 
+                                src={formData.fotoPerfilUrl} 
+                                alt="Preview" 
+                                onClick={() => setZoomedImage(formData.fotoPerfilUrl)}
+                                className="w-12 h-12 rounded-xl object-cover border border-slate-200 cursor-pointer hover:opacity-85 transition-opacity" 
+                                title="Clique para expandir"
+                              />
                             )}
                             <div className="relative flex-grow">
                               <input
                                 type="file"
-                                accept="image/*"
+                                accept="image/*,image/heic,image/heif,image/png,image/jpeg,image/jpg,image/webp,image/gif"
                                 onChange={(e) => {
                                   const file = e.target.files[0];
                                   if (file) {
@@ -1841,6 +1852,25 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* MODAL DE ZOOM DE IMAGEM */}
+      {zoomedImage && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200" onClick={() => setZoomedImage(null)}>
+          <button 
+            type="button"
+            onClick={() => setZoomedImage(null)}
+            className="absolute top-4 right-4 text-white hover:text-slate-200 p-2 bg-black/40 rounded-full transition-colors"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <img 
+            src={zoomedImage} 
+            alt="Foto Ampliada" 
+            className="max-w-full max-h-[90vh] rounded-xl object-contain shadow-2xl animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>

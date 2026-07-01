@@ -98,8 +98,7 @@ export default function EleicoesManager({ onNavigate }) {
               <tbody className="divide-y divide-slate-100 bg-white">
                 {eleicoes.map(e => (
                   <tr key={e.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 font-bold text-slate-800 flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-emerald-600" />
+                    <td className="px-6 py-4 font-bold text-slate-800">
                       {e.titulo}
                     </td>
                     <td className="px-6 py-4">

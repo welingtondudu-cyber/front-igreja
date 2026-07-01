@@ -28,6 +28,7 @@ export default function EscalasManager() {
   const [imagemUrl, setImagemUrl] = useState('')
   const [gruposSelecionados, setGruposSelecionados] = useState([]) // List of Grupo IDs
   const [status, setStatus] = useState('AGENDADO')
+  const [grupoConvocadoId, setGrupoConvocadoId] = useState('') // Convocação específica (Sociedade Interna)
 
   // Relação de voluntários temporários ao editar escalas de um evento
   const [escalasEdit, setEscalasEdit] = useState([]) // List of { membroId, grupoId, funcaoEspecifica, statusConfirmacao }
@@ -59,6 +60,10 @@ export default function EscalasManager() {
   const [loading, setLoading] = useState(false)
   const [loadingEquipe, setLoadingEquipe] = useState(false)
   const [feedback, setFeedback] = useState(null)
+
+  // Dialog de confirmação de remoção de grupo/ministério
+  const [showRemoveGrupoDialog, setShowRemoveGrupoDialog] = useState(false)
+  const [removeGrupoDialogData, setRemoveGrupoDialogData] = useState(null) // { grupoId, nomeGrupo, qtdMembros }
 
   const filtrarEventos = (list) => {
     return list.filter(ev => {
@@ -222,6 +227,7 @@ export default function EscalasManager() {
 
   const handleSelectEvento = async (eventoId) => {
     setSelectedEventoId(eventoId)
+    setSelectedCargoId(null) // Reset active ministry selection
     setSelectedMembrosList([])
     setShowDropdownMembros(false)
     setSelectedAllocatedIds([])
@@ -255,9 +261,40 @@ export default function EscalasManager() {
   }
 
   const handleToggleGrupoSelecionado = (grupoId) => {
+    const jaEstaSelecionado = gruposSelecionados.includes(grupoId)
+
+    if (jaEstaSelecionado && editingEventoId) {
+      // Verificar se há membros alocados para este grupo no evento
+      const membrosNoGrupo = escalasDoEvento.filter(
+        esc => String(esc.grupoId) === String(grupoId)
+      )
+      if (membrosNoGrupo.length > 0) {
+        const grupo = grupos.find(g => g.id === grupoId)
+        setRemoveGrupoDialogData({
+          grupoId,
+          nomeGrupo: grupo ? grupo.nomeGrupo : 'Ministério',
+          qtdMembros: membrosNoGrupo.length
+        })
+        setShowRemoveGrupoDialog(true)
+        return // Interrompe aqui; a remoção só acontece ao confirmar o dialog
+      }
+    }
+
     setGruposSelecionados(prev =>
       prev.includes(grupoId) ? prev.filter(id => id !== grupoId) : [...prev, grupoId]
     )
+  }
+
+  const handleConfirmRemoveGrupo = () => {
+    if (!removeGrupoDialogData) return
+    setGruposSelecionados(prev => prev.filter(id => id !== removeGrupoDialogData.grupoId))
+    setShowRemoveGrupoDialog(false)
+    setRemoveGrupoDialogData(null)
+  }
+
+  const handleCancelRemoveGrupo = () => {
+    setShowRemoveGrupoDialog(false)
+    setRemoveGrupoDialogData(null)
   }
 
   // Ao selecionar um cargo/ministério na visão de escalas, buscar membros daquele grupo
@@ -314,6 +351,7 @@ export default function EscalasManager() {
     setObservacoes(ev.observacoes || '')
     setImagemUrl(ev.imagemUrl || '')
     setGruposSelecionados(ev.gruposNecessariosIds || [])
+    setGrupoConvocadoId(ev.grupoConvocadoId || '')
     setStatus(ev.status || 'AGENDADO')
     setShowModal(true)
   }
@@ -359,6 +397,7 @@ export default function EscalasManager() {
         observacoes,
         imagemUrl,
         gruposIds: gruposSelecionados,
+        grupoConvocadoId: grupoConvocadoId ? Number(grupoConvocadoId) : null,
         status: status
       }
       
@@ -378,9 +417,16 @@ export default function EscalasManager() {
         setObservacoes('')
         setImagemUrl('')
         setGruposSelecionados([])
+        setGrupoConvocadoId('')
         setStatus('AGENDADO')
         setEditingEventoId(null)
         fetchEventosVisaoGeral()
+        // Se estava editando, atualizar também as escalas do evento e "Minhas Escalas"
+        // para refletir remoções de ministérios que excluem escalas de membros
+        if (editingEventoId) {
+          handleSelectEvento(editingEventoId)
+          if (membroLogadoId) fetchMinhasEscalas(membroLogadoId)
+        }
         setFeedback({ tipo: 'success', texto: editingEventoId ? 'Culto atualizado com sucesso!' : 'Culto cadastrado com sucesso!' })
         setTimeout(() => setFeedback(null), 3000)
       } else {
@@ -902,9 +948,10 @@ export default function EscalasManager() {
               const ev = eventos.find(e => e.id === selectedEventoId)
               if (!ev) return null
 
-              // Selecionar o primeiro grupo por padrão
-              if (!selectedCargoId && grupos.length > 0) {
-                setTimeout(() => handleSelectCargoId(grupos[0].id), 0)
+              // Selecionar o primeiro grupo do EVENTO (não o primeiro da lista global)
+              const gruposDoEvento = grupos.filter(cg => ev.gruposNecessariosIds && ev.gruposNecessariosIds.includes(cg.id))
+              if (!selectedCargoId && gruposDoEvento.length > 0) {
+                setTimeout(() => handleSelectCargoId(gruposDoEvento[0].id), 0)
               }
 
               const activeCargo = grupos.find(c => c.id === selectedCargoId)
@@ -1469,7 +1516,7 @@ export default function EscalasManager() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-450 uppercase mb-1">Data *</label>
                   <input
@@ -1501,6 +1548,20 @@ export default function EscalasManager() {
                 >
                   <option value="AGENDADO">AGENDADO</option>
                   <option value="CONCLUIDO">CONCLUÍDO</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-450 uppercase mb-1">Convocação / Escopo do Evento</label>
+                <select
+                  value={grupoConvocadoId}
+                  onChange={(e) => setGrupoConvocadoId(e.target.value)}
+                  className="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-emerald-600 bg-white font-semibold text-slate-700 cursor-pointer"
+                >
+                  <option value="">Toda a Igreja (Geral)</option>
+                  {grupos.filter(g => g.tipoGrupo === 'SOCIEDADES_INTERNAS' || g.tipoGrupo === 'SOCIEDADE_INTERNA').map(g => (
+                    <option key={g.id} value={g.id}>{g.nomeGrupo}</option>
+                  ))}
                 </select>
               </div>
 
@@ -1648,6 +1709,66 @@ export default function EscalasManager() {
           </div>
         </div>
       )}
+
+      {/* DIALOG DE CONFIRMAÇÃO: REMOVER MINISTÉRIO COM MEMBROS ALOCADOS */}
+      {showRemoveGrupoDialog && removeGrupoDialogData && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle size={22} className="text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-sm">Atenção: Membros Alocados</h3>
+                <p className="text-amber-100 text-xs">Esta ação removerá escalas existentes</p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-slate-700 text-sm leading-relaxed">
+                O ministério <span className="font-bold text-slate-900">"{removeGrupoDialogData.nomeGrupo}"</span> possui{' '}
+                <span className="font-bold text-orange-600">
+                  {removeGrupoDialogData.qtdMembros} {removeGrupoDialogData.qtdMembros === 1 ? 'membro alocado' : 'membros alocados'}
+                </span>{' '}
+                na escala deste culto/evento.
+              </p>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
+                <AlertCircle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                <p className="text-amber-800 text-xs leading-relaxed">
+                  Ao remover este ministério e salvar o evento, <strong>todas as escalas associadas a ele serão excluídas permanentemente</strong>. 
+                  Esta ação não pode ser desfeita.
+                </p>
+              </div>
+              <p className="text-slate-500 text-xs">
+                Deseja continuar e remover o ministério?
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 pb-5 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={handleCancelRemoveGrupo}
+                className="px-4 py-2 border border-slate-200 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-50 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmRemoveGrupo}
+                className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold rounded-xl hover:from-orange-600 hover:to-red-600 transition-all shadow-sm flex items-center gap-2"
+              >
+                <Trash2 size={13} />
+                Sim, remover ministério e escalas
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
+
   )
 }
