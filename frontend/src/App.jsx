@@ -16,13 +16,14 @@ import FinanceiroManager from './FinanceiroManager'
 import EscalasManager from './EscalasManager'
 import NoticiasManager from './NoticiasManager'
 import TrilhasManager from './TrilhasManager'
+import MembrosDashboard from './MembrosDashboard'
 
 function App() {
   // Navigation & View States
   const [currentView, setCurrentView] = useState(() => {
     const params = new URLSearchParams(window.location.search)
     const view = params.get('view')
-    if (view && ['feed', 'calendario', 'membros', 'organograma', 'eleicoes', 'apuracao', 'dashboards', 'analitico', 'fechamentos', 'financeiro-relatorios', 'escalas'].includes(view)) {
+    if (view && ['feed', 'calendario', 'membros', 'organograma', 'eleicoes', 'apuracao', 'dashboards', 'analitico', 'fechamentos', 'financeiro-relatorios', 'escalas', 'membros-dashboard'].includes(view)) {
       return view
     }
     if (window.location.pathname === '/apuracao') return 'apuracao'
@@ -299,6 +300,7 @@ function App() {
       case 'calendario': return 'Calendário'
       case 'estudos': return 'Estudos Bíblicos'
       case 'membros': return 'Gestão de Membros'
+      case 'membros-dashboard': return 'Dashboard de Membros'
       case 'organograma': return 'Organograma'
       case 'apuracao': return 'Apuração de Eleição'
       case 'eleicoes': return 'Gerenciar Eleições'
@@ -317,6 +319,8 @@ function App() {
         return renderCalendario()
       case 'estudos':
         return <TrilhasManager />
+      case 'membros-dashboard':
+        return <MembrosDashboard />
       case 'membros':
         return (
           <MembrosManager
@@ -1093,6 +1097,15 @@ function App() {
           {/* GROUP 3: PAINEL ADMINISTRATIVO */}
           <div className="space-y-2">
             <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2">Painel Administrativo</h4>
+            <button
+              onClick={() => navigateTo('membros-dashboard')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                currentView === 'membros-dashboard' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <BarChart3 className="h-5 w-5 text-emerald-700" />
+              Dashboard de Membros
+            </button>
             <button
               onClick={() => navigateTo('membros')}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${

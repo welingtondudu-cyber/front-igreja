@@ -22,4 +22,7 @@ public interface MembroGrupoRepository extends JpaRepository<MembroGrupo, Long> 
 
     @Query("SELECT mg FROM MembroGrupo mg JOIN FETCH mg.membro m LEFT JOIN FETCH m.cargo WHERE mg.grupo.id = :grupoId")
     List<MembroGrupo> findByGrupoIdWithMembro(@Param("grupoId") Long grupoId);
+
+    @Query("SELECT DISTINCT mg.membro.id FROM MembroGrupo mg WHERE LOWER(mg.membro.statusCadastro) = 'ativo' AND mg.grupo.tipoGrupo = :tipoGrupo")
+    List<Long> findMembroIdsAtivosPorTipoGrupo(@Param("tipoGrupo") com.suaempresa.gestao.domain.entity.TipoGrupo tipoGrupo);
 }

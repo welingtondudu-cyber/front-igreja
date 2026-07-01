@@ -54,4 +54,7 @@ public interface MembroRepository extends JpaRepository<Membro, Long>, JpaSpecif
            "    WHERE r.id.membroId = m.id AND r.id.votacaoId = :votacaoId" +
            ")")
     long countMembrosAptosParaVotar(@Param("votacaoId") Long votacaoId, @Param("limiteIdade") java.time.LocalDate limiteIdade);
+
+    @Query("SELECT m.dataAdesao FROM Membro m WHERE m.dataAdesao IS NOT NULL AND m.dataAdesao >= :dataInicio")
+    List<java.time.LocalDate> findDatasAdesaoDesde(@Param("dataInicio") java.time.LocalDate dataInicio);
 }
