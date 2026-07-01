@@ -34,6 +34,7 @@ public class DatabaseSanitizer implements CommandLineRunner {
             jdbcTemplate.execute("ALTER TABLE gestao.noticias ALTER COLUMN imagem_url TYPE TEXT");
             jdbcTemplate.execute("ALTER TABLE gestao.trilhas ALTER COLUMN imagem_url TYPE TEXT");
             jdbcTemplate.execute("ALTER TABLE gestao.trilha_conteudos ALTER COLUMN texto_completo TYPE TEXT");
+            jdbcTemplate.execute("ALTER TABLE gestao.trilha_conteudos ALTER COLUMN pdf_url TYPE TEXT");
             System.out.println("--- PICTURE COLUMNS ALTERED SUCCESSFULLY ---");
         } catch (Exception ex) {
             System.err.println("Could not alter picture columns: " + ex.getMessage());

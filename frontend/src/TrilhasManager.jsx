@@ -529,7 +529,7 @@ export default function TrilhasManager() {
         </div>
       </div>
 
-      {feedback && (
+      {!showTrilhaModal && !showConteudoModal && feedback && (
         <div className={`px-4 py-3 rounded-xl border flex items-center gap-2 text-sm font-semibold transition-all ${
           feedback.tipo === 'success' ? 'bg-emerald-50 border-emerald-250 text-emerald-800' : 
           feedback.tipo === 'error' ? 'bg-red-50 border-red-200 text-red-800' :
@@ -1229,6 +1229,19 @@ export default function TrilhasManager() {
             </div>
 
             <form onSubmit={handleSaveTrilha} className="p-5 space-y-4">
+              {feedback && (
+                <div className={`px-4 py-3 rounded-xl border flex items-center gap-2 text-sm font-semibold transition-all ${
+                  feedback.tipo === 'success' ? 'bg-emerald-50 border-emerald-250 text-emerald-800' : 
+                  feedback.tipo === 'error' ? 'bg-red-50 border-red-200 text-red-800' :
+                  'bg-slate-50 border-slate-200 text-slate-700'
+                }`}>
+                  {feedback.tipo === 'success' ? <CheckCircle2 className="h-5 w-5 text-emerald-700 shrink-0" /> :
+                   feedback.tipo === 'error' ? <AlertCircle className="h-5 w-5 text-red-700 shrink-0" /> :
+                   <Info className="h-5 w-5 text-slate-500 shrink-0" />
+                  }
+                  <span>{feedback.texto}</span>
+                </div>
+              )}
               <div>
                 <label className="block text-[10px] font-bold text-slate-450 uppercase mb-1">Título do Curso / Devocional *</label>
                 <input
@@ -1361,6 +1374,19 @@ export default function TrilhasManager() {
             </div>
 
             <form onSubmit={handleSaveConteudo} className="p-6 space-y-4 overflow-y-auto flex-grow">
+              {feedback && (
+                <div className={`px-4 py-3 rounded-xl border flex items-center gap-2 text-sm font-semibold transition-all ${
+                  feedback.tipo === 'success' ? 'bg-emerald-50 border-emerald-250 text-emerald-800' : 
+                  feedback.tipo === 'error' ? 'bg-red-50 border-red-200 text-red-800' :
+                  'bg-slate-50 border-slate-200 text-slate-700'
+                }`}>
+                  {feedback.tipo === 'success' ? <CheckCircle2 className="h-5 w-5 text-emerald-700 shrink-0" /> :
+                   feedback.tipo === 'error' ? <AlertCircle className="h-5 w-5 text-red-700 shrink-0" /> :
+                   <Info className="h-5 w-5 text-slate-500 shrink-0" />
+                  }
+                  <span>{feedback.texto}</span>
+                </div>
+              )}
               <div>
                 <label className="block text-[10px] font-bold text-slate-455 uppercase mb-1">Título do Conteúdo *</label>
                 <input

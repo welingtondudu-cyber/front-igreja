@@ -33,7 +33,7 @@ public class TrilhaConteudo {
     @Column(name = "video_url")
     private String videoUrl;
 
-    @Column(name = "pdf_url")
+    @Column(name = "pdf_url", columnDefinition = "TEXT")
     private String pdfUrl;
 
     @Column(nullable = false)
