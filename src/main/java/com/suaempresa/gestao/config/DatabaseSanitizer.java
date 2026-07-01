@@ -67,6 +67,52 @@ public class DatabaseSanitizer implements CommandLineRunner {
         }
 
         try {
+            System.out.println("--- CREATING BAZAR MODULE TABLES ---");
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS gestao.bazar_periodos (" +
+                    "id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, " +
+                    "nome_bazar VARCHAR(100) NOT NULL, " +
+                    "status VARCHAR(20) DEFAULT 'ATIVO', " +
+                    "data_inicio TIMESTAMP DEFAULT NOW(), " +
+                    "data_fechamento TIMESTAMP" +
+                    ")");
+            
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS gestao.bazar_responsaveis (" +
+                    "id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, " +
+                    "bazar_id BIGINT REFERENCES gestao.bazar_periodos(id) ON DELETE CASCADE, " +
+                    "membro_id BIGINT REFERENCES gestao.membros(id) ON DELETE CASCADE, " +
+                    "CONSTRAINT unique_bazar_responsavel UNIQUE (bazar_id, membro_id)" +
+                    ")");
+
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS gestao.bazar_produtos (" +
+                    "id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, " +
+                    "bazar_id BIGINT REFERENCES gestao.bazar_periodos(id) ON DELETE CASCADE, " +
+                    "titulo VARCHAR(150) NOT NULL, " +
+                    "descricao TEXT, " +
+                    "preco NUMERIC(10,2) NOT NULL, " +
+                    "foto_url TEXT" +
+                    ")");
+
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS gestao.bazar_vendas (" +
+                    "id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, " +
+                    "bazar_id BIGINT REFERENCES gestao.bazar_periodos(id) ON DELETE CASCADE, " +
+                    "valor_total NUMERIC(10,2) NOT NULL, " +
+                    "forma_pagamento VARCHAR(50) NOT NULL, " +
+                    "data_venda TIMESTAMP DEFAULT NOW()" +
+                    ")");
+
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS gestao.bazar_itens_estoque (" +
+                    "serial_number VARCHAR(50) PRIMARY KEY, " +
+                    "produto_id BIGINT REFERENCES gestao.bazar_produtos(id) ON DELETE CASCADE, " +
+                    "status_item VARCHAR(20) DEFAULT 'DISPONIVEL', " +
+                    "venda_id BIGINT REFERENCES gestao.bazar_vendas(id) ON DELETE SET NULL, " +
+                    "data_atualizacao TIMESTAMP DEFAULT NOW()" +
+                    ")");
+            System.out.println("--- BAZAR MODULE TABLES CREATED SUCCESSFULLY ---");
+        } catch (Exception ex) {
+            System.err.println("Could not create Bazar tables: " + ex.getMessage());
+        }
+
+        try {
             List<Membro> membros = membroRepository.findAll();
             boolean modified = false;
 

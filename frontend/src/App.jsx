@@ -4,7 +4,7 @@ import {
   ShieldCheck, LogOut, Users, Award, ShieldAlert, CalendarRange,
   DollarSign, Vote, ArrowRight, Settings, LayoutDashboard, UserCheck,
   Newspaper, Calendar, PieChart, BarChart3, ListFilter, BookOpen, AlertTriangle,
-  ChevronLeft, PlayCircle, Lock, FileText
+  ChevronLeft, PlayCircle, Lock, FileText, ShoppingCart
 } from 'lucide-react'
 import Apuracao from './Apuracao'
 import CadastroEleicao from './CadastroEleicao'
@@ -17,13 +17,14 @@ import EscalasManager from './EscalasManager'
 import NoticiasManager from './NoticiasManager'
 import TrilhasManager from './TrilhasManager'
 import MembrosDashboard from './MembrosDashboard'
+import BazarManager from './BazarManager'
 
 function App() {
   // Navigation & View States
   const [currentView, setCurrentView] = useState(() => {
     const params = new URLSearchParams(window.location.search)
     const view = params.get('view')
-    if (view && ['feed', 'calendario', 'membros', 'organograma', 'eleicoes', 'apuracao', 'dashboards', 'analitico', 'fechamentos', 'financeiro-relatorios', 'escalas', 'membros-dashboard'].includes(view)) {
+    if (view && ['feed', 'calendario', 'membros', 'organograma', 'eleicoes', 'apuracao', 'dashboards', 'analitico', 'fechamentos', 'financeiro-relatorios', 'escalas', 'membros-dashboard', 'bazar'].includes(view)) {
       return view
     }
     if (window.location.pathname === '/apuracao') return 'apuracao'
@@ -324,6 +325,7 @@ function App() {
       case 'dashboards': return 'Financeiro / Dashboards'
       case 'analitico': return 'Financeiro / Analítico'
       case 'voting': return 'Assembleia / Votar'
+      case 'bazar': return 'Bazar Beneficente'
       default: return ''
     }
   }
@@ -332,6 +334,8 @@ function App() {
     switch (currentView) {
       case 'feed':
         return <NoticiasManager />
+      case 'bazar':
+        return <BazarManager />
       case 'calendario':
         return renderCalendario()
       case 'estudos':
@@ -1231,6 +1235,15 @@ function App() {
             >
               <CalendarRange className="h-5 w-5 text-emerald-700" />
               Culto, Evento e Escala
+            </button>
+            <button
+              onClick={() => navigateTo('bazar')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                currentView === 'bazar' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <ShoppingCart className="h-5 w-5 text-emerald-700" />
+              Bazar Beneficente
             </button>
           </div>
 
