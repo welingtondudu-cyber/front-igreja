@@ -60,8 +60,17 @@ export default function BazarManager() {
   const [submittingBazar, setSubmittingBazar] = useState(false)
 
   const [showImportModal, setShowImportModal] = useState(false)
-  const [importText, setImportText] = useState('') // CSV/JSON style text import
+  const [importFile, setImportFile] = useState(null)
   const [importing, setImporting] = useState(false)
+
+  // Unitary product creation states
+  const [showCreateProductModal, setShowCreateProductModal] = useState(false)
+  const [prodTitulo, setProdTitulo] = useState('')
+  const [prodDescricao, setProdDescricao] = useState('')
+  const [prodPreco, setProdPreco] = useState('')
+  const [prodFotoUrl, setProdFotoUrl] = useState('')
+  const [prodQuantidade, setProdQuantidade] = useState(1)
+  const [submittingProduct, setSubmittingProduct] = useState(false)
 
   const [showResponsaveisModal, setShowResponsaveisModal] = useState(false)
   const [responsaveis, setResponsaveis] = useState([])
@@ -294,7 +303,7 @@ export default function BazarManager() {
       const res = await fetch(`/api/bazar/periodos/${selectedBazar.id}/responsaveis`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ membroId })
+        body: JSON.stringify({ bazarId: selectedBazar.id, membroId })
       })
       if (res.ok) {
         triggerToast('Organizador adicionado à equipe.')
@@ -331,63 +340,134 @@ export default function BazarManager() {
     }
   }
 
-  // Handle mass import
-  const handleImportMassa = async (e) => {
+  // Download Modelo CSV with UTF-8 BOM to prevent accent issues
+  const handleDownloadModeloCSV = () => {
+    const csvContent = "\uFEFFTitulo;Descricao;Preco;FotoUrl;Quantidade\n" +
+                       "Camiseta Polo;Tamanho M azul;25.00;;5\n" +
+                       "Calça Jeans;Tamanho 42 usada;40.00;;2\n" +
+                       "Sapato de Salto;Usado poucas vezes;35.00;;3";
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.setAttribute("href", url)
+    link.setAttribute("download", "modelo_bazar_produtos.csv")
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  // Handle CSV file upload & parsing
+  const handleImportCSVSubmit = (e) => {
     e.preventDefault()
-    if (!importText.trim()) return
+    if (!importFile) return
     setImporting(true)
-    try {
-      // Parse JSON
-      let list = []
+
+    const reader = new FileReader()
+    reader.onload = async (event) => {
       try {
-        list = JSON.parse(importText)
-      } catch (jsonErr) {
-        // Fallback: parse CSV lines
-        const lines = importText.split('\n')
-        for (let line of lines) {
-          if (!line.trim()) continue
+        const text = event.target.result
+        const lines = text.split(/\r?\n/)
+        const list = []
+
+        // Start from index 1 to skip header row: Titulo;Descricao;Preco;FotoUrl;Quantidade
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim()
+          if (!line) continue
           const parts = line.split(';')
           if (parts.length >= 3) {
+            const parsedPreco = parseFloat(parts[2].replace(',', '.').trim())
+            const parsedQty = parts[4] ? parseInt(parts[4].trim(), 10) : 1
             list.push({
               titulo: parts[0].trim(),
-              descricao: parts[1].trim(),
-              preco: parseFloat(parts[2].replace(',', '.').trim()),
+              descricao: parts[1] ? parts[1].trim() : '',
+              preco: isNaN(parsedPreco) ? 0.0 : parsedPreco,
               fotoUrl: parts[3] ? parts[3].trim() : '',
-              quantidade: parts[4] ? parseInt(parts[4].trim(), 10) : 1
+              quantidade: isNaN(parsedQty) ? 1 : parsedQty
             })
           }
         }
-      }
 
-      if (list.length === 0) {
-        triggerToast('Nenhum formato de dados válido encontrado. Use JSON ou CSV.', true)
+        if (list.length === 0) {
+          triggerToast('Nenhum produto válido encontrado no CSV.', true)
+          setImporting(false)
+          return
+        }
+
+        const res = await fetch('/api/bazar/produtos/importar-massa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bazarId: selectedBazar.id,
+            produtos: list
+          })
+        })
+
+        if (res.ok) {
+          triggerToast(`Importação de ${list.length} tipos de produtos efetuada com sucesso!`)
+          setShowImportModal(false)
+          setImportFile(null)
+          loadDashboard(selectedBazar.id)
+          loadProdutos(selectedBazar.id)
+        } else {
+          const errData = await res.json()
+          triggerToast(errData.detail || 'Erro ao importar produtos', true)
+        }
+      } catch (err) {
+        triggerToast('Erro de leitura ou parse do arquivo CSV', true)
+      } finally {
         setImporting(false)
-        return
       }
+    }
+    
+    // Read file using UTF-8 to preserve special characters/accents
+    reader.readAsText(importFile, 'UTF-8')
+  }
 
+  // Handle single product creation
+  const handleCreateProductSubmit = async (e) => {
+    e.preventDefault()
+    if (!prodTitulo.trim() || !prodPreco) return
+    setSubmittingProduct(true)
+
+    try {
+      const parsedPreco = parseFloat(String(prodPreco).replace(',', '.'))
       const res = await fetch('/api/bazar/produtos/importar-massa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bazarId: selectedBazar.id,
-          produtos: list
+          produtos: [
+            {
+              titulo: prodTitulo.trim(),
+              descricao: prodDescricao.trim(),
+              preco: isNaN(parsedPreco) ? 0.0 : parsedPreco,
+              fotoUrl: prodFotoUrl.trim(),
+              quantidade: prodQuantidade ? parseInt(String(prodQuantidade), 10) : 1
+            }
+          ]
         })
       })
 
       if (res.ok) {
-        triggerToast(`Importação de ${list.length} tipos de produtos efetuada com sucesso!`)
-        setShowImportModal(false)
-        setImportText('')
+        triggerToast('Produto cadastrado e estoque gerado com sucesso!')
+        setShowCreateProductModal(false)
+        // Reset single product form
+        setProdTitulo('')
+        setProdDescricao('')
+        setProdPreco('')
+        setProdFotoUrl('')
+        setProdQuantidade(1)
+        
         loadDashboard(selectedBazar.id)
         loadProdutos(selectedBazar.id)
       } else {
         const errData = await res.json()
-        triggerToast(errData.detail || 'Erro na importação massiva', true)
+        triggerToast(errData.detail || 'Erro ao cadastrar produto', true)
       }
     } catch (err) {
-      triggerToast('Falha no formato ou erro de rede', true)
+      triggerToast('Erro de rede ao cadastrar produto', true)
     } finally {
-      setImporting(false)
+      setSubmittingProduct(false)
     }
   }
 
@@ -660,8 +740,17 @@ export default function BazarManager() {
                 className="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5"
               >
                 <Upload className="h-4 w-4 text-teal-750" />
-                Importar Produtos
+                Importar CSV
               </button>
+              {selectedBazar.status === 'ATIVO' && (
+                <button
+                  onClick={() => setShowCreateProductModal(true)}
+                  className="bg-teal-755 text-white bg-teal-700 hover:bg-teal-800 font-bold text-xs px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-sm"
+                >
+                  <Plus className="h-4 w-4" />
+                  Cadastrar Produto
+                </button>
+              )}
               {selectedBazar.status === 'ATIVO' && (
                 <button
                   onClick={handleConcluirBazar}
@@ -961,59 +1050,158 @@ export default function BazarManager() {
             </div>
           )}
 
-          {/* Modal: Import Products */}
+          {/* Modal: Import Products (CSV) */}
           {showImportModal && (
             <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                 <div className="p-6 bg-slate-55/10 border-b border-slate-150 flex justify-between items-center">
-                  <h3 className="font-bold text-slate-800">Importação de Produtos em Massa</h3>
-                  <button onClick={() => setShowImportModal(false)} className="text-slate-400 hover:text-slate-600">
+                  <h3 className="font-bold text-slate-800">Importação de Produtos (CSV)</h3>
+                  <button onClick={() => { setShowImportModal(false); setImportFile(null); }} className="text-slate-400 hover:text-slate-600">
                     <X className="h-5 w-5" />
                   </button>
                 </div>
-                <form onSubmit={handleImportMassa} className="p-6 space-y-4">
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-[10px] text-amber-800 space-y-1">
-                    <span className="font-black uppercase tracking-wider block">Formatos Aceitos:</span>
-                    <p className="font-bold">Opção 1 (JSON):</p>
-                    <pre className="font-mono bg-white/50 p-1.5 rounded overflow-x-auto text-[9px]">
-{`[
-  { "titulo": "Camiseta Polo", "descricao": "Tamanho M, azul", "preco": 25.00, "quantidade": 5 },
-  { "titulo": "Calça Jeans", "descricao": "Tamanho 42, usada", "preco": 40.00, "quantidade": 2 }
-]`}
-                    </pre>
-                    <p className="font-bold">Opção 2 (CSV/Semicolon):</p>
-                    <pre className="font-mono bg-white/50 p-1.5 rounded text-[9px]">
-{`Titulo do Produto;Descricao Detalhada;Preco;FotoUrl;QuantidadeEstoque
-Sapato de Salto;Usado poucas vezes;35.00;;3`}
-                    </pre>
+                <form onSubmit={handleImportCSVSubmit} className="p-6 space-y-4">
+                  {/* CSV Dropzone / Upload area */}
+                  <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:border-teal-700 transition-colors">
+                    <Upload className="h-10 w-10 text-slate-350 mx-auto mb-2" />
+                    <label className="block text-xs font-bold text-slate-600 mb-1 cursor-pointer">
+                      Selecione o arquivo produtos.csv
+                      <input
+                        type="file"
+                        accept=".csv"
+                        className="hidden"
+                        onChange={(e) => setImportFile(e.target.files[0])}
+                        required
+                      />
+                    </label>
+                    {importFile ? (
+                      <p className="text-[10px] text-teal-700 font-bold mt-1">
+                        Selecionado: {importFile.name} ({(importFile.size / 1024).toFixed(1)} KB)
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-slate-400">Delimitador: ponto-e-vírgula (;)</p>
+                    )}
                   </div>
-                  
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Dados de Importação</label>
-                    <textarea
-                      required
-                      rows={6}
-                      placeholder="Cole os dados no formato acima..."
-                      value={importText}
-                      onChange={(e) => setImportText(e.target.value)}
-                      className="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-teal-650"
-                    />
+
+                  {/* Template Download Button */}
+                  <div className="bg-slate-55/10 rounded-xl p-3 flex items-center justify-between text-xs">
+                    <span className="text-slate-500 font-semibold">Baixar planilha de modelo</span>
+                    <button
+                      type="button"
+                      onClick={handleDownloadModeloCSV}
+                      className="text-teal-700 hover:underline font-bold"
+                    >
+                      modelo_bazar.csv
+                    </button>
                   </div>
 
                   <div className="flex gap-2 justify-end pt-2">
                     <button
                       type="button"
-                      onClick={() => setShowImportModal(false)}
+                      onClick={() => { setShowImportModal(false); setImportFile(null); }}
                       className="bg-white border border-slate-200 text-slate-600 font-semibold text-xs px-4 py-2.5 rounded-xl hover:bg-slate-50"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
-                      disabled={importing}
-                      className="bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-1"
+                      disabled={importing || !importFile}
+                      className="bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-1 disabled:opacity-50"
                     >
                       {importing && <Loader2 className="h-4 w-4 animate-spin" />}
+                      Processar CSV
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Modal: Cadastrar Produto Unitário */}
+          {showCreateProductModal && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <div className="p-6 bg-slate-55/10 border-b border-slate-150 flex justify-between items-center">
+                  <h3 className="font-bold text-slate-800">Cadastrar Produto</h3>
+                  <button onClick={() => setShowCreateProductModal(false)} className="text-slate-400 hover:text-slate-600">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <form onSubmit={handleCreateProductSubmit} className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Título do Produto</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ex: Sapato Social Preto"
+                      value={prodTitulo}
+                      onChange={(e) => setProdTitulo(e.target.value)}
+                      className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-650"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Descrição</label>
+                    <textarea
+                      placeholder="Detalhes como tamanho, cor, estado..."
+                      value={prodDescricao}
+                      onChange={(e) => setProdDescricao(e.target.value)}
+                      className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-650"
+                      rows={2}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Preço (R$)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        required
+                        placeholder="0.00"
+                        value={prodPreco}
+                        onChange={(e) => setProdPreco(e.target.value)}
+                        className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-650"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Quantidade de Estoque</label>
+                      <input
+                        type="number"
+                        min="1"
+                        required
+                        value={prodQuantidade}
+                        onChange={(e) => setProdQuantidade(Math.max(1, parseInt(e.target.value, 10)))}
+                        className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-650"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">URL da Foto (Opcional)</label>
+                    <input
+                      type="text"
+                      placeholder="http://..."
+                      value={prodFotoUrl}
+                      onChange={(e) => setProdFotoUrl(e.target.value)}
+                      className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-650"
+                    />
+                  </div>
+
+                  <div className="flex gap-2 justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateProductModal(false)}
+                      className="bg-white border border-slate-200 text-slate-600 font-semibold text-xs px-4 py-2.5 rounded-xl hover:bg-slate-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submittingProduct}
+                      className="bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-1"
+                    >
+                      {submittingProduct && <Loader2 className="h-4 w-4 animate-spin" />}
                       Salvar Cadastro
                     </button>
                   </div>
