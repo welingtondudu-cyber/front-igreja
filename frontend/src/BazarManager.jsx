@@ -4,6 +4,8 @@ import {
   Search,
   Plus,
   Trash,
+  Trash2,
+  Edit2,
   Loader2,
   DollarSign,
   Package,
@@ -17,6 +19,9 @@ import {
   FileText,
   Percent,
   Upload,
+  Download,
+  Printer,
+  RotateCcw,
   AlertCircle
 } from 'lucide-react'
 
@@ -92,6 +97,61 @@ export default function BazarManager() {
   // Feedback Messages
   const [toastMessage, setToastMessage] = useState(null)
 
+  // Event Date and Editing/Deletion states
+  const [newEventDataInicio, setNewEventDataInicio] = useState(new Date().toISOString().substring(0, 16))
+  const [showEditBazarModal, setShowEditBazarModal] = useState(false)
+  const [editBazarId, setEditBazarId] = useState(null)
+  const [editBazarNome, setEditBazarNome] = useState('')
+  const [editBazarDataInicio, setEditBazarDataInicio] = useState('')
+
+  const [showDeleteBazarModal, setShowDeleteBazarModal] = useState(false)
+  const [deleteBazarId, setDeleteBazarId] = useState(null)
+  const [deleteBazarNome, setDeleteBazarNome] = useState('')
+  const [deleteBazarMembroBusca, setDeleteBazarMembroBusca] = useState('')
+  const [deleteBazarFilteredMembros, setDeleteBazarFilteredMembros] = useState([])
+  const [deleteBazarSelectedMembro, setDeleteBazarSelectedMembro] = useState(null)
+
+  // Product Editing/Deletion states
+  const [showEditProductModal, setShowEditProductModal] = useState(false)
+  const [editProductId, setEditProductId] = useState(null)
+  const [editProdTitulo, setEditProdTitulo] = useState('')
+  const [editProdDescricao, setEditProdDescricao] = useState('')
+  const [editProdPreco, setEditProdPreco] = useState('')
+  const [editProdFotoUrl, setEditProdFotoUrl] = useState('')
+  const [editProdQuantidade, setEditProdQuantidade] = useState('')
+
+  const [showDeleteProductModal, setShowDeleteProductModal] = useState(false)
+  const [deleteProductId, setDeleteProductId] = useState(null)
+  const [deleteProductTitle, setDeleteProductTitle] = useState('')
+  const [deleteProductMembroBusca, setDeleteProductMembroBusca] = useState('')
+  const [deleteProductFilteredMembros, setDeleteProductFilteredMembros] = useState([])
+  const [deleteProductSelectedMembro, setDeleteProductSelectedMembro] = useState(null)
+
+  // Conclude / Reopen Action states
+  const [showEventStateModal, setShowEventStateModal] = useState(false)
+  const [eventStateAction, setEventStateAction] = useState('CONCLUIR') // 'CONCLUIR' | 'REABRIR'
+  const [stateActionSelectedMembroId, setStateActionSelectedMembroId] = useState('')
+
+  // Barcode Filter
+  const [filtroProdCodigoBarras, setFiltroProdCodigoBarras] = useState('')
+  const [sortOrder, setSortOrder] = useState('NOME_ASC')
+
+  // Report Modal states
+  const [showReportModal, setShowReportModal] = useState(false)
+  const [reportItems, setReportItems] = useState([])
+  const [loadingReport, setLoadingReport] = useState(false)
+
+  // Reversal (Estorno) Modal states
+  const [showEstornoModal, setShowEstornoModal] = useState(false)
+  const [estornoBarcode, setEstornoBarcode] = useState('')
+  const [estornoSelectedMembroId, setEstornoSelectedMembroId] = useState('')
+
+  // Label Printing states
+  const [selectedLabelProductIds, setSelectedLabelProductIds] = useState([])
+  const [labelsToPrint, setLabelsToPrint] = useState([])
+  const [showLabelsPrintModal, setShowLabelsPrintModal] = useState(false)
+  const [loadingLabels, setLoadingLabels] = useState(false)
+
   // Refs for POS scanner focus
   const serialInputRef = useRef(null)
 
@@ -108,7 +168,7 @@ export default function BazarManager() {
     setLoadingBazares(true)
     setBazarError(null)
     try {
-      let url = '/api/bazar/periodos'
+      let url = '/api/balcao-vendas/periodos'
       const params = []
       if (filtroNome) params.push(`nome=${encodeURIComponent(filtroNome)}`)
       if (filtroStatus !== 'TODOS') params.push(`status=${filtroStatus}`)
@@ -124,10 +184,10 @@ export default function BazarManager() {
         const data = await res.json()
         setBazares(data)
       } else {
-        setBazarError('Erro ao carregar bazares')
+        setBazarError('Erro ao carregar eventos')
       }
     } catch (err) {
-      setBazarError('Erro de conexão ao carregar bazares')
+      setBazarError('Erro de conexão ao carregar eventos')
     } finally {
       setLoadingBazares(false)
     }
@@ -137,7 +197,7 @@ export default function BazarManager() {
   const loadDashboard = async (bazarId) => {
     setLoadingDash(true)
     try {
-      const res = await fetch(`/api/bazar/periodos/${bazarId}/dashboard`)
+      const res = await fetch(`/api/balcao-vendas/periodos/${bazarId}/dashboard`)
       if (res.ok) {
         const stats = await res.json()
         setDashStats(stats)
@@ -153,11 +213,12 @@ export default function BazarManager() {
   const loadProdutos = async (bazarId) => {
     setLoadingProdutos(true)
     try {
-      let url = `/api/bazar/produtos/pesquisa?bazarId=${bazarId}`
+      let url = `/api/balcao-vendas/produtos/pesquisa?bazarId=${bazarId}`
       if (filtroProdNome) url += `&nome=${encodeURIComponent(filtroProdNome)}`
       if (filtroProdStatus !== 'TODOS') url += `&statusItem=${filtroProdStatus}`
       if (filtroProdPrecoMin) url += `&precoMin=${filtroProdPrecoMin}`
       if (filtroProdPrecoMax) url += `&precoMax=${filtroProdPrecoMax}`
+      if (filtroProdCodigoBarras) url += `&codigoBarras=${encodeURIComponent(filtroProdCodigoBarras)}`
 
       const res = await fetch(url)
       if (res.ok) {
@@ -193,8 +254,12 @@ export default function BazarManager() {
     if (selectedBazar) {
       loadDashboard(selectedBazar.id)
       loadProdutos(selectedBazar.id)
+      // Automatically load responsibles too to keep state populated
+      fetch(`/api/balcao-vendas/periodos/${selectedBazar.id}/responsaveis`)
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setResponsaveis(data))
     }
-  }, [selectedBazar, filtroProdNome, filtroProdStatus, filtroProdPrecoMin, filtroProdPrecoMax])
+  }, [selectedBazar, filtroProdNome, filtroProdStatus, filtroProdPrecoMin, filtroProdPrecoMax, filtroProdCodigoBarras])
 
   useEffect(() => {
     loadMembros()
@@ -227,14 +292,17 @@ export default function BazarManager() {
     if (!newBazarNome.trim()) return
     setSubmittingBazar(true)
     try {
-      const res = await fetch('/api/bazar/periodos', {
+      const res = await fetch('/api/balcao-vendas/periodos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nomeBazar: newBazarNome })
+        body: JSON.stringify({ 
+          nomeBazar: newBazarNome,
+          dataInicio: newEventDataInicio ? new Date(newEventDataInicio).toISOString() : null 
+        })
       })
       if (res.ok) {
         const created = await res.json()
-        triggerToast('Bazar cadastrado com sucesso!')
+        triggerToast('Evento cadastrado com sucesso!')
         setShowCreateBazarModal(false)
         setNewBazarNome('')
         loadBazares()
@@ -242,7 +310,7 @@ export default function BazarManager() {
         handleSelectBazar(created)
       } else {
         const errData = await res.json()
-        triggerToast(errData.detail || 'Erro ao criar bazar period', true)
+        triggerToast(errData.detail || 'Erro ao criar evento', true)
       }
     } catch (err) {
       triggerToast('Erro de rede', true)
@@ -251,25 +319,97 @@ export default function BazarManager() {
     }
   }
 
-  // Close / Conclude Bazar
-  const handleConcluirBazar = async () => {
-    if (!window.confirm(`Deseja realmente CONCLUIR DEFINITIVAMENTE o evento "${selectedBazar.nomeBazar}"? Esta ação é irreversível e bloqueará novas vendas.`)) {
+  // Handle editing event period
+  const handleEditBazar = async (e) => {
+    e.preventDefault()
+    if (!editBazarNome.trim()) return
+    try {
+      const res = await fetch(`/api/balcao-vendas/periodos/${editBazarId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nomeBazar: editBazarNome,
+          dataInicio: editBazarDataInicio ? new Date(editBazarDataInicio).toISOString() : null
+        })
+      })
+      if (res.ok) {
+        triggerToast('Evento atualizado com sucesso!')
+        setShowEditBazarModal(false)
+        loadBazares()
+        if (selectedBazar && selectedBazar.id === editBazarId) {
+          const updated = await res.json()
+          setSelectedBazar(updated)
+        }
+      } else {
+        const err = await res.json()
+        triggerToast(err.detail || 'Erro ao editar evento', true)
+      }
+    } catch (e) {
+      triggerToast('Erro de rede', true)
+    }
+  }
+
+  // Handle deleting event period
+  const handleDeleteBazar = async (e) => {
+    e.preventDefault()
+    if (!deleteBazarSelectedMembro) {
+      triggerToast('Selecione o membro que está excluindo o evento.', true)
       return
     }
     try {
-      const res = await fetch(`/api/bazar/periodos/${selectedBazar.id}/concluir`, {
+      const res = await fetch(`/api/balcao-vendas/periodos/${deleteBazarId}?membroId=${deleteBazarSelectedMembro.id}`, {
+        method: 'DELETE'
+      })
+      if (res.ok) {
+        triggerToast('Evento excluído com sucesso!')
+        setShowDeleteBazarModal(false)
+        setDeleteBazarSelectedMembro(null)
+        setDeleteBazarMembroBusca('')
+        if (selectedBazar && selectedBazar.id === deleteBazarId) {
+          setSelectedBazar(null)
+          setCurrentView('LIST')
+        }
+        loadBazares()
+      } else {
+        const err = await res.json()
+        triggerToast(err.detail || 'Erro ao excluir evento', true)
+      }
+    } catch (e) {
+      triggerToast('Erro de rede', true)
+    }
+  }
+
+  // Handle concluding or reopening event
+  const handleEventStateAction = async (e) => {
+    e.preventDefault()
+    if (!stateActionSelectedMembroId) {
+      triggerToast('Selecione um organizador responsável.', true)
+      return
+    }
+
+    const isMemberInTeam = responsaveis.some(r => r.membroId === parseInt(stateActionSelectedMembroId, 10))
+    if (!isMemberInTeam) {
+      triggerToast('Apenas membros da equipe responsável podem realizar essa ação.', true)
+      return
+    }
+
+    try {
+      const endpoint = eventStateAction === 'CONCLUIR' ? 'concluir' : 'reabrir'
+      const res = await fetch(`/api/balcao-vendas/periodos/${selectedBazar.id}/${endpoint}?membroId=${stateActionSelectedMembroId}`, {
         method: 'PUT'
       })
       if (res.ok) {
         const updated = await res.json()
         setSelectedBazar(updated)
-        triggerToast('Bazar concluído com sucesso e travado para alterações.')
+        triggerToast(`Evento ${eventStateAction === 'CONCLUIR' ? 'encerrado' : 'reaberto'} com sucesso!`)
+        setShowEventStateModal(false)
+        setStateActionSelectedMembroId('')
         loadBazares()
       } else {
-        const errData = await res.json()
-        triggerToast(errData.detail || 'Erro ao concluir bazar', true)
+        const err = await res.json()
+        triggerToast(err.detail || 'Erro ao alterar status do evento', true)
       }
-    } catch (err) {
+    } catch (e) {
       triggerToast('Erro de rede', true)
     }
   }
@@ -285,7 +425,7 @@ export default function BazarManager() {
     setShowResponsaveisModal(true)
     setLoadingResponsaveis(true)
     try {
-      const res = await fetch(`/api/bazar/periodos/${selectedBazar.id}/responsaveis`)
+      const res = await fetch(`/api/balcao-vendas/periodos/${selectedBazar.id}/responsaveis`)
       if (res.ok) {
         const data = await res.json()
         setResponsaveis(data)
@@ -300,7 +440,7 @@ export default function BazarManager() {
   // Add responsible member
   const handleAddResponsavel = async (membroId) => {
     try {
-      const res = await fetch(`/api/bazar/periodos/${selectedBazar.id}/responsaveis`, {
+      const res = await fetch(`/api/balcao-vendas/periodos/${selectedBazar.id}/responsaveis`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bazarId: selectedBazar.id, membroId })
@@ -310,7 +450,7 @@ export default function BazarManager() {
         setMembroBusca('')
         setFilteredMembros([])
         // reload responsives list
-        const loadRes = await fetch(`/api/bazar/periodos/${selectedBazar.id}/responsaveis`)
+        const loadRes = await fetch(`/api/balcao-vendas/periodos/${selectedBazar.id}/responsaveis`)
         if (loadRes.ok) setResponsaveis(await loadRes.json())
       } else {
         const errData = await res.json()
@@ -325,7 +465,7 @@ export default function BazarManager() {
   const handleRemoveResponsavel = async (respId) => {
     if (!window.confirm('Remover este organizador da equipe?')) return
     try {
-      const res = await fetch(`/api/bazar/responsaveis/${respId}`, {
+      const res = await fetch(`/api/balcao-vendas/responsaveis/${respId}`, {
         method: 'DELETE'
       })
       if (res.ok) {
@@ -393,7 +533,7 @@ export default function BazarManager() {
           return
         }
 
-        const res = await fetch('/api/bazar/produtos/importar-massa', {
+        const res = await fetch('/api/balcao-vendas/produtos/importar-massa', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -431,7 +571,7 @@ export default function BazarManager() {
 
     try {
       const parsedPreco = parseFloat(String(prodPreco).replace(',', '.'))
-      const res = await fetch('/api/bazar/produtos/importar-massa', {
+      const res = await fetch('/api/balcao-vendas/produtos/importar-massa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -471,15 +611,215 @@ export default function BazarManager() {
     }
   }
 
+  // Handle editing catalog product details
+  const handleEditProduct = async (e) => {
+    e.preventDefault()
+    if (!editProdTitulo.trim()) return
+    try {
+      const res = await fetch(`/api/balcao-vendas/produtos/${editProductId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          titulo: editProdTitulo.trim(),
+          descricao: editProdDescricao.trim(),
+          preco: parseFloat(String(editProdPreco).replace(',', '.')),
+          fotoUrl: editProdFotoUrl,
+          quantidade: editProdQuantidade ? parseInt(String(editProdQuantidade), 10) : 0
+        })
+      })
+      if (res.ok) {
+        triggerToast('Produto atualizado com sucesso!')
+        setShowEditProductModal(false)
+        loadProdutos(selectedBazar.id)
+      } else {
+        const err = await res.json()
+        triggerToast(err.detail || 'Erro ao editar produto', true)
+      }
+    } catch (e) {
+      triggerToast('Erro de rede', true)
+    }
+  }
+
+  // Handle deleting catalog product and stock items
+  const handleDeleteProduct = async (e) => {
+    e.preventDefault()
+    if (!deleteProductSelectedMembro) {
+      triggerToast('Selecione o membro que está excluindo o produto.', true)
+      return
+    }
+    try {
+      const res = await fetch(`/api/balcao-vendas/produtos/${deleteProductId}?membroId=${deleteProductSelectedMembro.id}`, {
+        method: 'DELETE'
+      })
+      if (res.ok) {
+        triggerToast('Produto excluído com sucesso!')
+        setShowDeleteProductModal(false)
+        setDeleteProductSelectedMembro(null)
+        setDeleteProductMembroBusca('')
+        loadProdutos(selectedBazar.id)
+        loadDashboard(selectedBazar.id)
+      } else {
+        const err = await res.json()
+        triggerToast(err.detail || 'Erro ao excluir produto', true)
+      }
+    } catch (e) {
+      triggerToast('Erro de rede', true)
+    }
+  }
+
+  // Handle Exporting CSV of unsold products in the same format as Import CSV
+  const handleExportUnsoldCSV = async () => {
+    try {
+      const res = await fetch(`/api/balcao-vendas/periodos/${selectedBazar.id}/itens`)
+      if (res.ok) {
+        const items = await res.json()
+        const unsold = items.filter(i => i.statusItem === 'DISPONIVEL')
+        
+        if (unsold.length === 0) {
+          triggerToast('Não há produtos não vendidos para exportar.', true)
+          return
+        }
+        
+        // Group unsold items by product ID
+        const grouped = {}
+        unsold.forEach(item => {
+          const pid = item.produtoId
+          if (!grouped[pid]) {
+            // Find full product details from state list
+            const prodDetail = produtos.find(p => p.id === pid) || {}
+            grouped[pid] = {
+              titulo: item.produtoTitulo || prodDetail.titulo || '',
+              descricao: prodDetail.descricao || '',
+              preco: item.preco || prodDetail.preco || 0.00,
+              fotoUrl: prodDetail.fotoUrl || '',
+              quantidade: 0
+            }
+          }
+          grouped[pid].quantidade += 1
+        })
+        
+        // Build CSV
+        let csvContent = '\uFEFF' // UTF-8 BOM
+        csvContent += 'Titulo;Descricao;Preco;FotoUrl;Quantidade\n'
+        Object.values(grouped).forEach(g => {
+          const formattedPreco = typeof g.preco === 'number' ? g.preco.toFixed(2) : String(g.preco)
+          csvContent += `"${g.titulo.replace(/"/g, '""')}";"${g.descricao.replace(/"/g, '""')}";"${formattedPreco}";"${g.fotoUrl}";${g.quantidade}\n`
+        })
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.setAttribute('href', url)
+        link.setAttribute('download', `nao_vendidos_${selectedBazar.nomeBazar.replace(/\s+/g, '_')}.csv`)
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        triggerToast('CSV de produtos não vendidos exportado!')
+      } else {
+        triggerToast('Erro ao obter itens do estoque', true)
+      }
+    } catch (e) {
+      triggerToast('Erro de rede ao exportar CSV', true)
+    }
+  }
+
+  // Handle opening printable report modal
+  const handleOpenReport = async () => {
+    setLoadingReport(true)
+    setShowReportModal(true)
+    try {
+      const res = await fetch(`/api/balcao-vendas/periodos/${selectedBazar.id}/itens`)
+      if (res.ok) {
+        const data = await res.json()
+        setReportItems(data)
+      } else {
+        triggerToast('Erro ao carregar dados do relatório', true)
+      }
+    } catch (e) {
+      triggerToast('Erro de rede ao carregar relatório', true)
+    } finally {
+      setLoadingReport(false)
+    }
+  }
+
+  // Handle single item estorno (reversal)
+  const handleEstornoSubmit = async (e) => {
+    e.preventDefault()
+    if (!estornoBarcode.trim()) {
+      triggerToast('Informe o código de barras para estorno.', true)
+      return
+    }
+    if (!estornoSelectedMembroId) {
+      triggerToast('Selecione o organizador efetuando o estorno.', true)
+      return
+    }
+    try {
+      const res = await fetch(`/api/balcao-vendas/itens/estorno?serialNumber=${encodeURIComponent(estornoBarcode.trim())}&membroId=${estornoSelectedMembroId}`, {
+        method: 'POST'
+      })
+      if (res.ok) {
+        triggerToast('Item estornado e devolvido ao estoque com sucesso!')
+        setShowEstornoModal(false)
+        setEstornoBarcode('')
+        setEstornoSelectedMembroId('')
+        loadDashboard(selectedBazar.id)
+        loadProdutos(selectedBazar.id)
+      } else {
+        const err = await res.json()
+        triggerToast(err.detail || 'Erro ao estornar item. Verifique se o código está correto e vendido.', true)
+      }
+    } catch (e) {
+      triggerToast('Erro de rede ao processar estorno', true)
+    }
+  }
+
+  // Toggle selection of product for labels
+  const handleToggleLabelProduct = (productId) => {
+    setSelectedLabelProductIds(prev => 
+      prev.includes(productId) 
+        ? prev.filter(id => id !== productId) 
+        : [...prev, productId]
+    )
+  }
+
+  // Fetch stock items and load labels to print modal
+  const handlePrintLabels = async () => {
+    if (selectedLabelProductIds.length === 0) return
+    setLoadingLabels(true)
+    try {
+      const res = await fetch(`/api/balcao-vendas/periodos/${selectedBazar.id}/itens`)
+      if (res.ok) {
+        const data = await res.json()
+        const selectedBarcodes = data.filter(i => 
+          selectedLabelProductIds.includes(i.produtoId) && 
+          i.statusItem === 'DISPONIVEL'
+        )
+        if (selectedBarcodes.length === 0) {
+          triggerToast('Não há unidades disponíveis no estoque para os produtos selecionados.', true)
+        } else {
+          setLabelsToPrint(selectedBarcodes)
+          setShowLabelsPrintModal(true)
+        }
+      } else {
+        triggerToast('Erro ao buscar códigos de barras dos produtos.', true)
+      }
+    } catch (e) {
+      triggerToast('Erro de rede ao preparar etiquetas.', true)
+    } finally {
+      setLoadingLabels(false)
+    }
+  }
+
+
   // Add Item to POS Cart by Serial or by Direct click in the vitrine
   const handleAddCarrinho = async (item) => {
     // If it's a product from vitrine, we need to fetch an available serial number for this product!
     if (item.id && !item.serialNumber) {
       try {
-        const res = await fetch(`/api/bazar/produtos/pesquisa?bazarId=${selectedBazar.id}&nome=${encodeURIComponent(item.titulo)}&statusItem=DISPONIVEL`)
+        const res = await fetch(`/api/balcao-vendas/produtos/pesquisa?bazarId=${selectedBazar.id}&nome=${encodeURIComponent(item.titulo)}&statusItem=DISPONIVEL`)
         if (res.ok) {
           // Find an available item in the stock repository for this product ID
-          const serRes = await fetch(`/api/bazar/produtos/pesquisa?bazarId=${selectedBazar.id}`)
+          const serRes = await fetch(`/api/balcao-vendas/produtos/pesquisa?bazarId=${selectedBazar.id}`)
           // Since we want an available serial, we can query details of this product's stock directly or use helper endpoint
           // But wait! We can just fetch available seriais for this product ID!
           // Let's call the controller to see if we can locate a serial number.
@@ -489,14 +829,14 @@ export default function BazarManager() {
           // countByProdutoIdAndStatusItem is used, but wait: how does the frontend obtain the list of seriais?
           // Let's look at how the front-end can retrieve the list. Let's make an API call to get a serial for this product!
           // Wait! Is there an endpoint for this?
-          // We can fetch `/api/bazar/produtos/pesquisa?bazarId=X&nome=Title` which returns products.
+          // We can fetch `/api/balcao-vendas/produtos/pesquisa?bazarId=X&nome=Title` which returns products.
           // Wait! What if we fetch all items or just do a quick get query to find one?
           // Let's add a helper endpoint or let's search where we can retrieve serials.
           // Wait, we can add a method or query in BazarService or Controller to fetch available stock items of a product!
           // Let's see if we can query them or just send the product ID and the backend automatically allocates the serial, OR we search.
           // Wait, let's look at `confirmarVenda` in `BazarService.java`. It accepts `List<String> seriais`.
           // If the user clicks a card in the vitrine, it would be extremely smart if the frontend gets the available serials!
-          // Let's add an endpoint to BazarController: `GET /api/bazar/produtos/{id}/seriais-disponiveis`!
+          // Let's add an endpoint to BazarController: `GET /api/balcao-vendas/produtos/{id}/seriais-disponiveis`!
           // Yes! This will make the direct click work 100% cleanly!
           // Let's write the plan and implement this helper endpoint. It's so clean.
         }
@@ -515,11 +855,11 @@ export default function BazarManager() {
     
     setLoadingProdutos(true)
     try {
-      const res = await fetch(`/api/bazar/produtos/pesquisa?bazarId=${selectedBazar.id}&nome=${encodeURIComponent(product.titulo)}&statusItem=DISPONIVEL`)
+      const res = await fetch(`/api/balcao-vendas/produtos/pesquisa?bazarId=${selectedBazar.id}&nome=${encodeURIComponent(product.titulo)}&statusItem=DISPONIVEL`)
       if (res.ok) {
         // Let's fetch the list of seriais for this product.
         // Wait! We can call a helper fetch to query the serials directly.
-        // Let's implement the `/api/bazar/produtos/{id}/seriais-disponiveis` endpoint on the backend.
+        // Let's implement the `/api/balcao-vendas/produtos/{id}/seriais-disponiveis` endpoint on the backend.
         // Let's do it! This is very precise.
       }
     } catch (e) {
@@ -554,8 +894,8 @@ export default function BazarManager() {
               <ShoppingCart className="h-64 w-64" />
             </div>
             <span className="text-xs font-bold bg-teal-700/50 uppercase tracking-widest px-3 py-1 rounded-full w-fit">Eventos Sociais</span>
-            <h1 className="text-2xl sm:text-3xl font-extrabold mt-3 tracking-tight">Gestão de Bazar Beneficente</h1>
-            <p className="text-sm text-teal-100 mt-2 max-w-xl">Gerencie períodos de vendas, estoque de doações e faturamento integrado para as causas beneficentes locais.</p>
+            <h1 className="text-2xl sm:text-3xl font-extrabold mt-3 tracking-tight">Balcão de Vendas</h1>
+            <p className="text-sm text-teal-100 mt-2 max-w-xl">Gerencie períodos de vendas, estoque de itens e faturamento isolado para as ações e causas locais.</p>
           </div>
 
           {/* Filter Bar */}
@@ -566,7 +906,7 @@ export default function BazarManager() {
                 <Search className="h-4 w-4 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Buscar bazar por nome..."
+                  placeholder="Buscar evento por nome..."
                   value={filtroNome}
                   onChange={(e) => setFiltroNome(e.target.value)}
                   className="bg-transparent text-xs text-slate-800 focus:outline-none w-full font-semibold"
@@ -611,7 +951,7 @@ export default function BazarManager() {
               className="bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 self-end lg:self-auto w-full lg:w-auto"
             >
               <Plus className="h-4 w-4" />
-              Novo Bazar
+              Novo Evento
             </button>
           </div>
 
@@ -619,46 +959,100 @@ export default function BazarManager() {
           {loadingBazares ? (
             <div className="py-24 flex flex-col items-center justify-center text-slate-400 bg-white border border-slate-200 rounded-2xl">
               <Loader2 className="h-10 w-10 text-teal-700 animate-spin mb-3" />
-              <span className="font-bold">Carregando períodos de bazar...</span>
+              <span className="font-bold">Carregando períodos de evento...</span>
             </div>
           ) : bazarError ? (
             <div className="py-16 text-center bg-rose-50 text-rose-800 border border-rose-100 rounded-2xl font-bold">
               {bazarError}
             </div>
           ) : bazares.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {bazares.map((b) => (
-                <div
-                  key={b.id}
-                  onClick={() => handleSelectBazar(b)}
-                  className="bg-white border border-slate-200 hover:border-teal-500/50 rounded-2xl p-6 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between">
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                        b.status === 'ATIVO' 
-                          ? 'bg-emerald-100 text-emerald-800' 
-                          : 'bg-slate-100 text-slate-500'
-                      }`}>
-                        {b.status}
-                      </span>
-                      <Calendar className="h-5 w-5 text-slate-400 group-hover:text-teal-700 transition-colors" />
-                    </div>
-                    <h3 className="font-bold text-slate-800 text-base group-hover:text-teal-700 transition-colors line-clamp-1">{b.nomeBazar}</h3>
-                    <p className="text-xs text-slate-500 font-semibold">
-                      Iniciado em: {new Date(b.dataInicio).toLocaleDateString('pt-BR')}
-                    </p>
-                  </div>
-                  <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-teal-700">
-                    <span>Acessar Painel</span>
-                    <ArrowLeft className="h-4 w-4 rotate-180 transition-transform group-hover:translate-x-1" />
-                  </div>
-                </div>
-              ))}
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm animate-in fade-in duration-200">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                      <th className="p-4 w-28 text-center">Status</th>
+                      <th className="p-4">Nome do Evento de Vendas</th>
+                      <th className="p-4 w-52">Data de Início</th>
+                      <th className="p-4 w-40 text-center">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
+                    {bazares.map((b) => (
+                      <tr 
+                        key={b.id} 
+                        onClick={() => handleSelectBazar(b)}
+                        className="hover:bg-slate-50/50 transition-colors cursor-pointer"
+                      >
+                        <td className="p-4 text-center">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                            b.status === 'ATIVO' 
+                              ? 'bg-emerald-100 text-emerald-800' 
+                              : 'bg-slate-100 text-slate-500'
+                          }`}>
+                            {b.status}
+                          </span>
+                        </td>
+                        <td className="p-4 font-bold text-slate-800 text-sm">
+                          {b.nomeBazar}
+                        </td>
+                        <td className="p-4 text-slate-500 font-semibold">
+                          {new Date(b.dataInicio).toLocaleDateString('pt-BR')} às {new Date(b.dataInicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center justify-center gap-3">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleSelectBazar(b)
+                              }}
+                              className="text-teal-700 hover:text-teal-800 bg-teal-50 hover:bg-teal-100/50 p-2 rounded-xl transition-all"
+                              title="Acessar Painel"
+                            >
+                              <ArrowLeft className="h-4 w-4 rotate-180" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setEditBazarId(b.id)
+                                setEditBazarNome(b.nomeBazar)
+                                setEditBazarDataInicio(new Date(b.dataInicio).toISOString().substring(0, 16))
+                                setShowEditBazarModal(true)
+                              }}
+                              className="text-slate-500 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 p-2 rounded-xl transition-all"
+                              title="Editar Evento"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setDeleteBazarId(b.id)
+                                setDeleteBazarNome(b.nomeBazar)
+                                setDeleteBazarSelectedMembro(null)
+                                setDeleteBazarMembroBusca('')
+                                setShowDeleteBazarModal(true)
+                              }}
+                              className="text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 p-2 rounded-xl transition-all"
+                              title="Excluir Evento"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (filtroNome || filtroStatus !== 'TODOS' || filtroDataInicio || filtroDataFim) ? (
+            <div className="py-20 text-center text-slate-400 italic bg-white border border-slate-200 rounded-2xl font-semibold">
+              Nenhum evento encontrado para os filtros selecionados.
             </div>
           ) : (
             <div className="py-20 text-center text-slate-400 italic bg-white border border-slate-200 rounded-2xl font-semibold">
-              Nenhum bazar encontrado para os filtros selecionados.
+              Sem evento cadastrado
             </div>
           )}
 
@@ -667,7 +1061,7 @@ export default function BazarManager() {
             <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
               <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                 <div className="p-6 bg-slate-55/10 border-b border-slate-150 flex justify-between items-center">
-                  <h3 className="font-bold text-slate-800">Criar Novo Período de Bazar</h3>
+                  <h3 className="font-bold text-slate-800">Novo Evento</h3>
                   <button onClick={() => setShowCreateBazarModal(false)} className="text-slate-400 hover:text-slate-600">
                     <X className="h-5 w-5" />
                   </button>
@@ -681,6 +1075,16 @@ export default function BazarManager() {
                       placeholder="Ex: Bazar de Inverno 2026"
                       value={newBazarNome}
                       onChange={(e) => setNewBazarNome(e.target.value)}
+                      className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-650"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Data de Início do Evento</label>
+                    <input
+                      type="datetime-local"
+                      required
+                      value={newEventDataInicio}
+                      onChange={(e) => setNewEventDataInicio(e.target.value)}
                       className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-650"
                     />
                   </div>
@@ -698,7 +1102,137 @@ export default function BazarManager() {
                       className="bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-1"
                     >
                       {submittingBazar && <Loader2 className="h-4 w-4 animate-spin" />}
-                      Criar Bazar
+                      Criar Evento
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Edit Event Modal */}
+          {showEditBazarModal && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+              <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="p-6 bg-slate-55/10 border-b border-slate-150 flex justify-between items-center">
+                  <h3 className="font-bold text-slate-800">Editar Evento</h3>
+                  <button onClick={() => setShowEditBazarModal(false)} className="text-slate-400 hover:text-slate-600">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <form onSubmit={handleEditBazar} className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Nome do Evento</label>
+                    <input
+                      type="text"
+                      required
+                      value={editBazarNome}
+                      onChange={(e) => setEditBazarNome(e.target.value)}
+                      className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-650"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Data de Início</label>
+                    <input
+                      type="datetime-local"
+                      required
+                      value={editBazarDataInicio}
+                      onChange={(e) => setEditBazarDataInicio(e.target.value)}
+                      className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-650"
+                    />
+                  </div>
+                  <div className="flex gap-2 justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowEditBazarModal(false)}
+                      className="bg-white border border-slate-200 text-slate-600 font-semibold text-xs px-4 py-2.5 rounded-xl hover:bg-slate-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm"
+                    >
+                      Salvar Alterações
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Event Modal (Requires member for log history) */}
+          {showDeleteBazarModal && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+              <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="p-6 bg-rose-50 border-b border-rose-100 flex justify-between items-center">
+                  <h3 className="font-bold text-rose-800">Confirmar Exclusão do Evento</h3>
+                  <button onClick={() => setShowDeleteBazarModal(false)} className="text-rose-400 hover:text-rose-600">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <form onSubmit={handleDeleteBazar} className="p-6 space-y-4">
+                  <div className="bg-rose-50 border border-rose-100 rounded-xl p-4 text-xs font-semibold text-rose-800 leading-relaxed">
+                    <AlertCircle className="h-4 w-4 inline mr-1 text-rose-600 float-left mt-0.5" />
+                    Atenção: Ao excluir o evento <span className="font-black">"{deleteBazarNome}"</span>, todos os produtos, estoques e históricos vinculados serão removidos definitivamente. Esta ação é irreversível.
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Qual membro está realizando a exclusão?</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        required
+                        placeholder="Buscar membro por nome..."
+                        value={deleteBazarMembroBusca}
+                        onChange={(e) => {
+                          setDeleteBazarMembroBusca(e.target.value)
+                          if (e.target.value.trim() === '') {
+                            setDeleteBazarFilteredMembros([])
+                          } else {
+                            const q = e.target.value.toLowerCase()
+                            setDeleteBazarFilteredMembros(membros.filter(m => m.nomeCompleto.toLowerCase().includes(q)))
+                          }
+                        }}
+                        className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-650"
+                      />
+                      {deleteBazarFilteredMembros.length > 0 && (
+                        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto divide-y divide-slate-50">
+                          {deleteBazarFilteredMembros.map(m => (
+                            <div
+                              key={m.id}
+                              onClick={() => {
+                                setDeleteBazarSelectedMembro(m)
+                                setDeleteBazarMembroBusca(m.nomeCompleto)
+                                setDeleteBazarFilteredMembros([])
+                              }}
+                              className="p-2.5 text-xs text-slate-700 hover:bg-slate-50 cursor-pointer font-bold flex items-center gap-2"
+                            >
+                              <div className="h-6 w-6 rounded-full overflow-hidden bg-slate-100 border border-slate-200">
+                                {m.fotoPerfilUrl ? <img src={m.fotoPerfilUrl} alt="" className="w-full h-full object-cover" /> : <div className="h-full w-full bg-teal-50" />}
+                              </div>
+                              {m.nomeCompleto}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteBazarModal(false)}
+                      className="bg-white border border-slate-200 text-slate-600 font-semibold text-xs px-4 py-2.5 rounded-xl hover:bg-slate-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={!deleteBazarSelectedMembro}
+                      className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm disabled:opacity-50"
+                    >
+                      Excluir Evento
                     </button>
                   </div>
                 </form>
@@ -709,64 +1243,114 @@ export default function BazarManager() {
       ) : (
         // ==========================================
         // VIEW: BAZAR INTERNAL PANEL (DASH + VITRINE)
-        // ==========================================
         <div className="space-y-6">
           {/* Header Action Row */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-4 border border-slate-200 rounded-2xl shadow-sm">
-            <button
-              onClick={() => setCurrentView('LIST')}
-              className="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Voltar aos Bazares
-            </button>
-            <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
-              <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                selectedBazar.status === 'ATIVO' 
-                  ? 'bg-emerald-100 text-emerald-800' 
-                  : 'bg-slate-100 text-slate-500'
-              }`}>
-                {selectedBazar.status}
-              </span>
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white p-4 border border-slate-200 rounded-2xl shadow-sm">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setCurrentView('LIST')}
+                className="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-teal-700 transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Voltar aos Eventos
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-2 sm:flex sm:flex-row sm:items-center sm:flex-wrap gap-2 w-full md:w-auto">
               <button
                 onClick={openResponsaveisModal}
-                className="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5"
+                className="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 w-full justify-center sm:w-auto"
               >
                 <UserPlus className="h-4 w-4 text-teal-750" />
                 Equipe ({responsaveis.length})
               </button>
               <button
                 onClick={() => setShowImportModal(true)}
-                className="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5"
+                className="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 w-full justify-center sm:w-auto"
               >
                 <Upload className="h-4 w-4 text-teal-750" />
                 Importar CSV
               </button>
+              <button
+                onClick={handleOpenReport}
+                className="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 w-full justify-center sm:w-auto"
+              >
+                <Printer className="h-4 w-4 text-teal-750" />
+                Relatório de Vendas
+              </button>
+              <button
+                onClick={handleExportUnsoldCSV}
+                className="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 w-full justify-center sm:w-auto"
+              >
+                <Download className="h-4 w-4 text-teal-750" />
+                Exportar Não Vendidos
+              </button>
+              <button
+                onClick={() => {
+                  setEstornoBarcode('')
+                  setEstornoSelectedMembroId('')
+                  setShowEstornoModal(true)
+                }}
+                className="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 w-full justify-center sm:w-auto"
+              >
+                <RotateCcw className="h-4 w-4 text-teal-750" />
+                Estornar Item
+              </button>
               {selectedBazar.status === 'ATIVO' && (
                 <button
                   onClick={() => setShowCreateProductModal(true)}
-                  className="bg-teal-755 text-white bg-teal-700 hover:bg-teal-800 font-bold text-xs px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-sm"
+                  className="bg-teal-700 hover:bg-teal-850 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 shadow-sm w-full justify-center sm:w-auto col-span-2 sm:col-span-1"
                 >
                   <Plus className="h-4 w-4" />
                   Cadastrar Produto
                 </button>
               )}
-              {selectedBazar.status === 'ATIVO' && (
+            </div>
+          </div>
+ 
+          {/* Info Title */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white/40 border border-slate-200 p-5 rounded-2xl shadow-xs">
+            <div>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-extrabold text-slate-900">{selectedBazar.nomeBazar}</h2>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                  selectedBazar.status === 'ATIVO' 
+                    ? 'bg-emerald-100 text-emerald-800' 
+                    : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {selectedBazar.status}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-semibold mt-1">Painel operacional de controle de estoque, PDV e organizadores.</p>
+            </div>
+
+            <div className="shrink-0">
+              {selectedBazar.status === 'ATIVO' ? (
                 <button
-                  onClick={handleConcluirBazar}
-                  className="bg-rose-50 border border-rose-200 text-rose-800 hover:bg-rose-100/50 font-bold text-xs px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5"
+                  onClick={() => {
+                    setEventStateAction('CONCLUIR')
+                    setStateActionSelectedMembroId('')
+                    setShowEventStateModal(true)
+                  }}
+                  className="bg-rose-50 border border-rose-200 text-rose-800 hover:bg-rose-100/50 font-bold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 shadow-xs"
                 >
-                  <Ban className="h-4 w-4" />
-                  Concluir Bazar
+                  <Ban className="h-4 w-4 text-rose-650" />
+                  Encerrar Evento
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setEventStateAction('REABRIR')
+                    setStateActionSelectedMembroId('')
+                    setShowEventStateModal(true)
+                  }}
+                  className="bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-100/50 font-bold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 shadow-xs"
+                >
+                  <Check className="h-4 w-4 text-emerald-650" />
+                  Reabrir Evento
                 </button>
               )}
             </div>
-          </div>
-
-          {/* Info Title */}
-          <div>
-            <h2 className="text-xl font-extrabold text-slate-900">{selectedBazar.nomeBazar}</h2>
-            <p className="text-xs text-slate-500 font-semibold mt-0.5">Painel operacional de controle de estoque, PDV e organizadores.</p>
           </div>
 
           {/* Quick Metrics Cards */}
@@ -814,11 +1398,42 @@ export default function BazarManager() {
           </div>
 
           {/* Vitrine Filters */}
-          <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between bg-white p-4 border border-slate-200 rounded-2xl shadow-sm">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0 flex items-center">Filtros Avançados de Vitrine:</span>
-            <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto flex-wrap">
+          <div className="bg-white p-5 border border-slate-200 rounded-2xl shadow-sm space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Filtros & Ordenação</span>
+                <div className="h-px bg-slate-100 w-24"></div>
+              </div>
+              
+              {produtos.length > 0 && (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => {
+                      const allIds = produtos.map(p => p.id)
+                      const allSelected = allIds.every(id => selectedLabelProductIds.includes(id))
+                      if (allSelected) {
+                        setSelectedLabelProductIds(prev => prev.filter(id => !allIds.includes(id)))
+                      } else {
+                        setSelectedLabelProductIds(prev => {
+                          const newSelection = [...prev]
+                          allIds.forEach(id => {
+                            if (!newSelection.includes(id)) newSelection.push(id)
+                          })
+                          return newSelection
+                        })
+                      }
+                    }}
+                    className="text-[10px] font-black uppercase text-teal-700 hover:text-teal-800 bg-teal-50 hover:bg-teal-100/60 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    {produtos.every(p => selectedLabelProductIds.includes(p.id)) ? 'Desmarcar Todos' : 'Selecionar Todos da Vitrine'}
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 w-full">
               {/* Product search */}
-              <div className="flex items-center gap-2 bg-slate-55/10 border border-slate-200 rounded-xl px-3 py-1.5 w-full sm:w-56">
+              <div className="flex items-center gap-2 bg-slate-55/10 border border-slate-200 rounded-xl px-3 py-2 w-full focus-within:border-teal-550/50 transition-colors">
                 <Search className="h-4 w-4 text-slate-400" />
                 <input
                   type="text"
@@ -829,13 +1444,26 @@ export default function BazarManager() {
                 />
               </div>
 
-              {/* Status Stock */}
-              <div className="flex items-center gap-2 bg-slate-55/10 border border-slate-200 rounded-xl px-3 py-1.5 w-full sm:w-36">
+              {/* Barcode filter */}
+              <div className="flex items-center gap-2 bg-slate-55/10 border border-slate-200 rounded-xl px-3 py-2 w-full focus-within:border-teal-550/50 transition-colors">
+                <Search className="h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Código de barras..."
+                  value={filtroProdCodigoBarras}
+                  onChange={(e) => setFiltroProdCodigoBarras(e.target.value)}
+                  className="bg-transparent text-xs text-slate-800 focus:outline-none w-full font-semibold"
+                />
+              </div>
+
+              {/* Status Stock (Beautiful Combobox) */}
+              <div className="flex items-center gap-2 bg-slate-55/10 border border-slate-200 rounded-xl px-3 py-2 w-full focus-within:border-teal-550/50 transition-colors relative">
                 <span className="text-xs text-slate-500">Estoque:</span>
                 <select
                   value={filtroProdStatus}
                   onChange={(e) => setFiltroProdStatus(e.target.value)}
-                  className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer w-full"
+                  className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer w-full pr-4 appearance-none animate-none"
+                  style={{ backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right center', backgroundSize: '1em' }}
                 >
                   <option value="TODOS">Todos</option>
                   <option value="DISPONIVEL">Disponível</option>
@@ -843,110 +1471,378 @@ export default function BazarManager() {
                 </select>
               </div>
 
+              {/* Sort Order Selector (Beautiful Combobox) */}
+              <div className="flex items-center gap-2 bg-slate-55/10 border border-slate-200 rounded-xl px-3 py-2 w-full focus-within:border-teal-550/50 transition-colors relative">
+                <span className="text-xs text-slate-500 whitespace-nowrap">Ordenar:</span>
+                <select
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer w-full pr-4 appearance-none animate-none"
+                  style={{ backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right center', backgroundSize: '1em' }}
+                >
+                  <option value="NOME_ASC">Nome (A-Z)</option>
+                  <option value="NOME_DESC">Nome (Z-A)</option>
+                  <option value="PRECO_ASC">Menor Preço</option>
+                  <option value="PRECO_DESC">Maior Preço</option>
+                </select>
+              </div>
+
               {/* Range Price */}
-              <div className="flex items-center gap-2 bg-slate-55/10 border border-slate-200 rounded-xl px-3 py-1.5 w-full sm:w-auto">
+              <div className="flex items-center gap-2 bg-slate-55/10 border border-slate-200 rounded-xl px-3 py-2 w-full">
                 <span className="text-xs text-slate-500 whitespace-nowrap">Preço R$:</span>
-                <input
-                  type="number"
-                  placeholder="Mín"
-                  value={filtroProdPrecoMin}
-                  onChange={(e) => setFiltroProdPrecoMin(e.target.value)}
-                  className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none w-16"
-                />
-                <span className="text-xs text-slate-400">a</span>
-                <input
-                  type="number"
-                  placeholder="Máx"
-                  value={filtroProdPrecoMax}
-                  onChange={(e) => setFiltroProdPrecoMax(e.target.value)}
-                  className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none w-16"
-                />
+                <div className="flex items-center gap-1 w-full">
+                  <input
+                    type="number"
+                    placeholder="Mín"
+                    value={filtroProdPrecoMin}
+                    onChange={(e) => setFiltroProdPrecoMin(e.target.value)}
+                    className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none w-full text-center border-b border-slate-200 focus:border-teal-500"
+                  />
+                  <span className="text-[10px] text-slate-400">a</span>
+                  <input
+                    type="number"
+                    placeholder="Máx"
+                    value={filtroProdPrecoMax}
+                    onChange={(e) => setFiltroProdPrecoMax(e.target.value)}
+                    className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none w-full text-center border-b border-slate-200 focus:border-teal-500"
+                  />
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Vitrine Products Grid (Mercado Libre Style Cards) */}
+          {/* Vitrine Products Catalog (Cards Layout) */}
           {loadingProdutos ? (
             <div className="py-24 text-center text-slate-400">
               <Loader2 className="h-10 w-10 text-teal-700 animate-spin mx-auto mb-3" />
               <span>Filtrando catálogo de produtos...</span>
             </div>
           ) : produtos.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {produtos.map((p) => {
+            <div className="space-y-4">
+              {/* Batch Action Alert Bar for Printing Labels */}
+              {selectedLabelProductIds.length > 0 && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-250 shadow-xs">
+                  <div className="flex items-center gap-3 text-emerald-900 font-bold text-xs sm:text-sm">
+                    <Check className="h-5 w-5 text-emerald-600 bg-white p-1 rounded-full border border-emerald-200" />
+                    <span>{selectedLabelProductIds.length} {selectedLabelProductIds.length === 1 ? 'produto selecionado' : 'produtos selecionados'} para impressão de etiquetas</span>
+                  </div>
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                    <button
+                      onClick={() => setSelectedLabelProductIds([])}
+                      className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold text-xs px-4 py-2.5 rounded-xl transition-all"
+                    >
+                      Limpar Seleção
+                    </button>
+                    <button
+                      onClick={handlePrintLabels}
+                      disabled={loadingLabels}
+                      className="bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      {loadingLabels ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+                      Imprimir Etiquetas dos Selecionados ({selectedLabelProductIds.length})
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {[...produtos].sort((a, b) => {
+                if (sortOrder === 'NOME_ASC') return a.titulo.localeCompare(b.titulo)
+                if (sortOrder === 'NOME_DESC') return b.titulo.localeCompare(a.titulo)
+                if (sortOrder === 'PRECO_ASC') return a.preco - b.preco
+                if (sortOrder === 'PRECO_DESC') return b.preco - a.preco
+                return 0
+              }).map((p) => {
                 const totalAvail = p.totalEstoque - p.totalVendido
                 const isAvail = totalAvail > 0
                 return (
                   <div
                     key={p.id}
-                    onClick={() => {
-                      if (isAvail) {
-                        // Open checkout / POS modal and inject this product!
-                        setShowPDVModal(true)
-                        // Fetch available serial for this product
-                        fetch(`/api/bazar/produtos/pesquisa?bazarId=${selectedBazar.id}&nome=${encodeURIComponent(p.titulo)}&statusItem=DISPONIVEL`)
-                          .then(res => res.json())
-                          .then(items => {
-                            // Find any item from database that has serial number of this product type
-                            // For prototype ease, we trigger find serial API
-                            // Let's implement /api/bazar/produtos/pesquisa directly to fetch items in POS!
-                          })
-                        // Quick helper inject toPOS
-                        const mockSerial = `BAZ-${selectedBazar.id}-${p.id}-MOCK`
-                        // Let's add direct checkout selection:
-                        setCarrinho(prev => {
-                          // Prevent duplicate in cart
-                          if (prev.find(item => item.produtoId === p.id)) return prev
-                          return [...prev, {
-                            serialNumber: '', // will resolve or type
-                            produtoId: p.id,
-                            titulo: p.titulo,
-                            preco: p.preco,
-                            needsSerialResolve: true
-                          }]
-                        })
-                      }
-                    }}
-                    className={`bg-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-lg transition-all cursor-pointer flex flex-col justify-between ${
+                    className={`bg-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-lg transition-all flex flex-col justify-between group relative ${
                       !isAvail ? 'opacity-65' : ''
                     }`}
                   >
-                    <div>
+                    <div className="flex flex-col flex-grow">
                       {/* Product Image */}
-                      <div className="relative aspect-square w-full bg-slate-100 flex items-center justify-center text-slate-300">
+                      <div className="relative aspect-square w-full bg-slate-100 flex items-center justify-center text-slate-355 select-none overflow-hidden">
                         {p.fotoUrl ? (
                           <img src={p.fotoUrl} alt={p.titulo} className="w-full h-full object-cover" />
                         ) : (
-                          <Package className="h-10 w-10" />
+                          <Package className="h-10 w-10 text-slate-300" />
                         )}
                         <span className={`absolute top-2 left-2 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
                           isAvail ? 'bg-emerald-500 text-white' : 'bg-slate-400 text-white'
                         }`}>
                           {isAvail ? 'Disponível' : 'Esgotado'}
                         </span>
+
+                        {/* Selection Checkbox for Labels */}
+                        <div className="absolute top-2 right-2 z-10 flex items-center justify-center bg-white/90 rounded-lg p-1.5 shadow-sm border border-slate-250" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedLabelProductIds.includes(p.id)}
+                            onChange={() => handleToggleLabelProduct(p.id)}
+                            className="h-4 w-4 rounded border-slate-350 text-teal-650 focus:ring-teal-500 cursor-pointer accent-teal-700"
+                          />
+                        </div>
+
+                        {/* Card Hover overlay with edit and remove icons */}
+                        <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
+                          {selectedBazar.status === 'ATIVO' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setEditProductId(p.id)
+                                setEditProdTitulo(p.titulo)
+                                setEditProdDescricao(p.descricao || '')
+                                setEditProdPreco(p.preco)
+                                setEditProdFotoUrl(p.fotoUrl || '')
+                                setEditProdQuantidade(p.totalEstoque || 0)
+                                setShowEditProductModal(true)
+                              }}
+                              className="bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 p-2 rounded-xl transition-all shadow-md"
+                              title="Editar Produto"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                          )}
+                          {selectedBazar.status === 'ATIVO' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setDeleteProductId(p.id)
+                                setDeleteProductTitle(p.titulo)
+                                setDeleteProductSelectedMembro(null)
+                                setDeleteProductMembroBusca('')
+                                setShowDeleteProductModal(true)
+                              }}
+                              className="bg-white hover:bg-slate-50 text-rose-600 hover:text-rose-700 p-2 rounded-xl transition-all shadow-md"
+                              title="Remover Produto"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      
-                      <div className="p-3 space-y-1">
-                        <h4 className="font-bold text-slate-800 text-xs line-clamp-2 leading-tight min-h-[32px]">{p.titulo}</h4>
-                        <div className="text-sm font-extrabold text-slate-900">
+
+                      <div className="p-3 space-y-1 flex flex-col justify-between flex-grow">
+                        <div>
+                          <h4 className="font-bold text-slate-800 text-xs line-clamp-2 leading-tight min-h-[32px]">{p.titulo}</h4>
+                          {p.descricao && <div className="text-[9px] text-slate-400 font-semibold line-clamp-1 mb-1">{p.descricao}</div>}
+                          {p.codigoBarras && (
+                            <div className="text-[8px] font-bold font-mono text-slate-500 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded-lg inline-block uppercase tracking-wider mb-1">
+                              {p.codigoBarras}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-sm font-extrabold text-slate-900 mt-1">
                           R$ {p.preco?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </div>
                       </div>
                     </div>
 
                     <div className="p-3 pt-0 text-[10px] text-slate-400 font-semibold border-t border-slate-50 flex items-center justify-between">
-                      <span>Qtd: {totalAvail} unid.</span>
-                      {isAvail && (
-                        <span className="text-teal-700 font-bold hover:underline">Vender</span>
+                      <span>{totalAvail} {totalAvail === 1 ? 'unidade' : 'unidades'}</span>
+                      {isAvail && selectedBazar.status === 'ATIVO' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setShowPDVModal(true)
+                            fetch(`/api/balcao-vendas/produtos/${p.id}/serial-disponivel`)
+                              .then(res => {
+                                if (res.ok) return res.json()
+                                throw new Error('Sem código de barras disponível')
+                              })
+                              .then(data => {
+                                if (data.serialNumber) {
+                                  setCarrinho(prev => {
+                                    if (prev.find(item => item.produtoId === p.id)) return prev
+                                    return [...prev, {
+                                      serialNumber: data.serialNumber,
+                                      produtoId: p.id,
+                                      titulo: p.titulo,
+                                      preco: p.preco,
+                                      needsSerialResolve: false
+                                    }]
+                                  })
+                                }
+                              })
+                              .catch(() => triggerToast('Não foi possível alocar código de barras automaticamente.', true))
+                          }}
+                          className="text-teal-700 hover:text-teal-855 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <ShoppingCart className="h-3.5 w-3.5" />
+                          Vender
+                        </button>
                       )}
                     </div>
                   </div>
                 )
               })}
             </div>
+          </div>
           ) : (
             <div className="py-20 text-center text-slate-400 italic bg-white border border-slate-200 rounded-2xl font-semibold">
               Nenhum produto cadastrado ou correspondente na vitrine.
+            </div>
+          )}
+
+          {/* Modal: Relatório de Vendas */}
+          {showReportModal && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200 no-print-backdrop">
+              <div className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] print-visible">
+                
+                <style dangerouslySetInnerHTML={{ __html: `
+                  @media print {
+                    body { background: white !important; color: black !important; }
+                    .no-print, header, nav, aside, button, .no-print-backdrop {
+                      display: none !important;
+                    }
+                    .overflow-y-auto, .flex-grow {
+                      overflow: visible !important;
+                      height: auto !important;
+                      max-height: none !important;
+                    }
+                    .print-visible {
+                      position: absolute !important;
+                      left: 0 !important;
+                      top: 0 !important;
+                      width: 100% !important;
+                      height: auto !important;
+                      display: block !important;
+                    }
+                  }
+                ` }} />
+
+                <div className="p-6 bg-slate-55/10 border-b border-slate-150 flex justify-between items-center shrink-0 no-print">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-teal-700" />
+                    <h3 className="font-extrabold text-slate-800">Relatório Consolidado do Evento</h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => window.print()}
+                      className="bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+                    >
+                      <Printer className="h-4 w-4" />
+                      Imprimir Relatório
+                    </button>
+                    <button onClick={() => setShowReportModal(false)} className="text-slate-400 hover:text-slate-600 bg-white border border-slate-200 p-2 rounded-xl">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex-grow overflow-y-auto p-8 print-container space-y-6">
+                  {loadingReport ? (
+                    <div className="py-24 text-center text-slate-400">
+                      <Loader2 className="h-10 w-10 text-teal-700 animate-spin mx-auto mb-3" />
+                      <span>Processando dados do relatório...</span>
+                    </div>
+                  ) : (
+                    <div id="printable-report" className="space-y-6">
+                      <div className="text-center pb-4 border-b border-slate-200">
+                        <h2 className="text-xl font-black text-slate-900">Relatório de Evento de Vendas</h2>
+                        <p className="text-sm font-bold text-teal-700 mt-1">{selectedBazar.nomeBazar}</p>
+                        <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold mt-0.5">
+                          Início do Evento: {new Date(selectedBazar.dataInicio).toLocaleDateString('pt-BR')} às {new Date(selectedBazar.dataInicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+
+                      {/* Summary stats */}
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Valor Arrecadado</span>
+                          <div className="text-lg font-black text-emerald-700 mt-1">
+                            R$ {reportItems.filter(i => i.statusItem === 'VENDIDO').reduce((acc, i) => acc + (i.preco || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </div>
+                        </div>
+                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Itens Vendidos</span>
+                          <div className="text-lg font-black text-slate-800 mt-1">
+                            {reportItems.filter(i => i.statusItem === 'VENDIDO').length} unidades
+                          </div>
+                        </div>
+                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Itens Não Vendidos</span>
+                          <div className="text-lg font-black text-slate-800 mt-1">
+                            {reportItems.filter(i => i.statusItem === 'DISPONIVEL').length} unidades
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Sold items list */}
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-black text-slate-900 border-b border-slate-100 pb-1 uppercase tracking-wider">Produtos Vendidos</h4>
+                        {reportItems.filter(i => i.statusItem === 'VENDIDO').length > 0 ? (
+                          <table className="w-full text-left border-collapse text-xs font-semibold text-slate-700">
+                            <thead>
+                              <tr className="bg-slate-50 text-[10px] text-slate-400 uppercase tracking-wider font-bold border-b border-slate-200">
+                                <th className="p-2">Código de Barras</th>
+                                <th className="p-2">Nome do Produto</th>
+                                <th className="p-2 text-right">Preço Pago</th>
+                                <th className="p-2 text-center">Data Atualização</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {reportItems.filter(i => i.statusItem === 'VENDIDO').map((item, idx) => (
+                                <tr key={idx} className="hover:bg-slate-50/50">
+                                  <td className="p-2 font-mono">{item.serialNumber}</td>
+                                  <td className="p-2">{item.produtoTitulo}</td>
+                                  <td className="p-2 text-right font-bold text-slate-900">R$ {item.preco?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                  <td className="p-2 text-center text-[10px] font-normal text-slate-400">
+                                    {item.dataAtualizacao ? new Date(item.dataAtualizacao).toLocaleDateString('pt-BR') : '-'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        ) : (
+                          <p className="text-xs text-slate-400 italic py-2">Nenhum item foi vendido neste evento.</p>
+                        )}
+                      </div>
+
+                      {/* Unsold items list */}
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-black text-slate-900 border-b border-slate-100 pb-1 uppercase tracking-wider">Produtos Não Vendidos (Disponíveis)</h4>
+                        {reportItems.filter(i => i.statusItem === 'DISPONIVEL').length > 0 ? (
+                          <table className="w-full text-left border-collapse text-xs font-semibold text-slate-700">
+                            <thead>
+                              <tr className="bg-slate-50 text-[10px] text-slate-400 uppercase tracking-wider font-bold border-b border-slate-200">
+                                <th className="p-2">Código de Barras</th>
+                                <th className="p-2">Nome do Produto</th>
+                                <th className="p-2 text-right">Preço de Tabela</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {reportItems.filter(i => i.statusItem === 'DISPONIVEL').map((item, idx) => (
+                                <tr key={idx} className="hover:bg-slate-50/50">
+                                  <td className="p-2 font-mono">{item.serialNumber}</td>
+                                  <td className="p-2">{item.produtoTitulo}</td>
+                                  <td className="p-2 text-right font-bold text-slate-900">R$ {item.preco?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        ) : (
+                          <p className="text-xs text-slate-400 italic py-2">Todos os itens cadastrados foram vendidos.</p>
+                        )}
+                      </div>
+
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-6 bg-slate-50 border-t border-slate-150 flex justify-end shrink-0">
+                  <button
+                    onClick={() => setShowReportModal(false)}
+                    className="bg-white border border-slate-200 text-slate-600 font-bold text-xs px-5 py-2.5 rounded-xl hover:bg-slate-100 transition-colors"
+                  >
+                    Fechar Relatório
+                  </button>
+                </div>
+
+              </div>
             </div>
           )}
 
@@ -1178,14 +2074,44 @@ export default function BazarManager() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">URL da Foto (Opcional)</label>
-                    <input
-                      type="text"
-                      placeholder="http://..."
-                      value={prodFotoUrl}
-                      onChange={(e) => setProdFotoUrl(e.target.value)}
-                      className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-650"
-                    />
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Foto do Produto (Opcional)</label>
+                    <div className="flex items-center gap-3">
+                      <div className="h-14 w-14 rounded-full overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
+                        {prodFotoUrl ? (
+                          <img src={prodFotoUrl} alt="Preview" className="w-full h-full object-cover" />
+                        ) : (
+                          <Package className="h-6 w-6 text-slate-300" />
+                        )}
+                      </div>
+                      <label className="flex items-center gap-2 border border-slate-350 hover:bg-slate-50 text-slate-700 font-bold text-xs px-4 py-2 rounded-xl transition-all cursor-pointer">
+                        Alterar Foto
+                        <Upload className="h-4 w-4" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setProdFotoUrl(reader.result);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                      {prodFotoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setProdFotoUrl('')}
+                          className="border border-red-200 text-red-650 bg-red-50 hover:bg-red-100/50 p-2 rounded-xl transition-all font-semibold"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex gap-2 justify-end pt-2">
@@ -1210,6 +2136,206 @@ export default function BazarManager() {
             </div>
           )}
 
+          {/* Edit Product Modal */}
+          {showEditProductModal && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-250">
+              <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="p-6 bg-slate-55/10 border-b border-slate-150 flex justify-between items-center">
+                  <h3 className="font-bold text-slate-800">Editar Produto</h3>
+                  <button onClick={() => setShowEditProductModal(false)} className="text-slate-400 hover:text-slate-600">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <form onSubmit={handleEditProduct} className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Título do Produto</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ex: Sapato Social Preto"
+                      value={editProdTitulo}
+                      onChange={(e) => setEditProdTitulo(e.target.value)}
+                      className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-650 font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Descrição</label>
+                    <textarea
+                      placeholder="Detalhes como tamanho, cor, estado..."
+                      value={editProdDescricao}
+                      onChange={(e) => setEditProdDescricao(e.target.value)}
+                      className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-650 font-semibold"
+                      rows={2}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Preço (R$)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      placeholder="0.00"
+                      value={editProdPreco}
+                      onChange={(e) => setEditProdPreco(e.target.value)}
+                      className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-650 font-bold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Quantidade em Estoque</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      placeholder="Ex: 5"
+                      value={editProdQuantidade}
+                      onChange={(e) => setEditProdQuantidade(e.target.value)}
+                      className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-650 font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Foto do Produto (Opcional)</label>
+                    <div className="flex items-center gap-3">
+                      <div className="h-14 w-14 rounded-full overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
+                        {editProdFotoUrl ? (
+                          <img src={editProdFotoUrl} alt="Preview" className="w-full h-full object-cover" />
+                        ) : (
+                          <Package className="h-6 w-6 text-slate-300" />
+                        )}
+                      </div>
+                      <label className="flex items-center gap-2 border border-slate-350 hover:bg-slate-50 text-slate-700 font-bold text-xs px-4 py-2 rounded-xl transition-all cursor-pointer">
+                        Alterar Foto
+                        <Upload className="h-4 w-4" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setEditProdFotoUrl(reader.result);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                      {editProdFotoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setEditProdFotoUrl('')}
+                          className="border border-red-200 text-red-650 bg-red-50 hover:bg-red-100/50 p-2 rounded-xl transition-all font-semibold"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowEditProductModal(false)}
+                      className="bg-white border border-slate-200 text-slate-600 font-semibold text-xs px-4 py-2.5 rounded-xl hover:bg-slate-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm"
+                    >
+                      Salvar Alterações
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Product Modal (Requires confirmation + Member logs history) */}
+          {showDeleteProductModal && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+              <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="p-6 bg-rose-50 border-b border-rose-100 flex justify-between items-center">
+                  <h3 className="font-bold text-rose-800">Excluir Produto</h3>
+                  <button onClick={() => setShowDeleteProductModal(false)} className="text-rose-400 hover:text-rose-600">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <form onSubmit={handleDeleteProduct} className="p-6 space-y-4">
+                  <div className="bg-rose-50 border border-rose-100 rounded-xl p-4 text-xs font-semibold text-rose-800 leading-relaxed">
+                    <AlertCircle className="h-4 w-4 inline mr-1 text-rose-600 float-left mt-0.5" />
+                    Atenção: Ao excluir o produto <span className="font-black">"{deleteProductTitle}"</span>, todos os seus respectivos códigos de barra e quantidades em estoque serão permanentemente removidos.
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Qual membro está realizando a exclusão?</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        required
+                        placeholder="Buscar membro por nome..."
+                        value={deleteProductMembroBusca}
+                        onChange={(e) => {
+                          setDeleteProductMembroBusca(e.target.value)
+                          if (e.target.value.trim() === '') {
+                            setDeleteProductFilteredMembros([])
+                          } else {
+                            const q = e.target.value.toLowerCase()
+                            setDeleteProductFilteredMembros(membros.filter(m => m.nomeCompleto.toLowerCase().includes(q)))
+                          }
+                        }}
+                        className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-650"
+                      />
+                      {deleteProductFilteredMembros.length > 0 && (
+                        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto divide-y divide-slate-50">
+                          {deleteProductFilteredMembros.map(m => (
+                            <div
+                              key={m.id}
+                              onClick={() => {
+                                setDeleteProductSelectedMembro(m)
+                                setDeleteProductMembroBusca(m.nomeCompleto)
+                                setDeleteProductFilteredMembros([])
+                              }}
+                              className="p-2.5 text-xs text-slate-700 hover:bg-slate-50 cursor-pointer font-bold flex items-center gap-2"
+                            >
+                              <div className="h-6 w-6 rounded-full overflow-hidden bg-slate-100 border border-slate-200">
+                                {m.fotoPerfilUrl ? <img src={m.fotoPerfilUrl} alt="" className="w-full h-full object-cover" /> : <div className="h-full w-full bg-teal-50" />}
+                              </div>
+                              {m.nomeCompleto}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteProductModal(false)}
+                      className="bg-white border border-slate-200 text-slate-600 font-semibold text-xs px-4 py-2.5 rounded-xl hover:bg-slate-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={!deleteProductSelectedMembro}
+                      className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm disabled:opacity-50"
+                    >
+                      Excluir Produto
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
           {/* Modal: Frente de Caixa (PDV Ágil) */}
           {showPDVModal && (
             <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -1221,7 +2347,7 @@ export default function BazarManager() {
                     <ShoppingCart className="h-6 w-6" />
                     <div>
                       <h3 className="font-extrabold text-sm sm:text-base">Frente de Caixa (PDV)</h3>
-                      <p className="text-[10px] text-teal-100">Registre vendas rápidas adicionando múltiplos seriais.</p>
+                      <p className="text-[10px] text-teal-100">Registre vendas rápidas adicionando múltiplos códigos de barra.</p>
                     </div>
                   </div>
                   <button onClick={() => setShowPDVModal(false)} className="text-teal-200 hover:text-white bg-teal-700/50 p-2 rounded-full transition-colors">
@@ -1238,7 +2364,7 @@ export default function BazarManager() {
                     {/* Scanner Input */}
                     <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs space-y-2">
                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        Digitar ou Escanear Serial Único (Foco Automático)
+                        Digitar ou Escanear Código de Barras (Foco Automático)
                       </label>
                       <form
                         onSubmit={async (e) => {
@@ -1251,45 +2377,32 @@ export default function BazarManager() {
 
                           // Check if already in checkout cart
                           if (carrinho.find(c => c.serialNumber === rawSerial)) {
-                            setPdvError(`O serial ${rawSerial} já foi inserido no carrinho.`)
+                            setPdvError(`O código de barras ${rawSerial} já foi inserido no carrinho.`)
                             return
                           }
 
                           // Query catalog product item details
                           try {
-                            const res = await fetch(`/api/bazar/produtos/pesquisa?bazarId=${selectedBazar.id}`)
+                            const res = await fetch(`/api/balcao-vendas/produtos/pesquisa?bazarId=${selectedBazar.id}&codigoBarras=${encodeURIComponent(rawSerial)}`)
                             if (res.ok) {
-                              // We simulate looking for the item details from inventory lists
-                              // Let's call the API to verify this specific serial code.
-                              // Since we want to display the title and price in the cart immediately,
-                              // we fetch list of products or query this serial directly.
-                              // Let's do a request to verify the serial status!
-                              // Wait, how does the frontend obtain the title/price of the product for this serial?
-                              // We can fetch from database by doing a quick search or let the service return details.
-                              // For simplicity, we query serial status or get a mockup list.
-                              // Let's fetch all products to match the serial prefix (Prefix is BAZ-{bazarId}-{produtoId}-{uuid}).
-                              const parts = rawSerial.split('-')
-                              if (parts.length >= 4) {
-                                const prodId = parts[2]
-                                const prod = produtos.find(p => String(p.id) === prodId)
-                                if (prod) {
-                                  setCarrinho(prev => [
-                                    ...prev,
-                                    {
-                                      serialNumber: rawSerial,
-                                      produtoId: prod.id,
-                                      titulo: prod.titulo,
-                                      preco: prod.preco
-                                    }
-                                  ])
-                                  return
-                                }
+                              const list = await res.json()
+                              if (list.length > 0) {
+                                const prod = list[0]
+                                setCarrinho(prev => [
+                                  ...prev,
+                                  {
+                                    serialNumber: rawSerial,
+                                    produtoId: prod.id,
+                                    titulo: prod.titulo,
+                                    preco: prod.preco
+                                  }
+                                ])
+                                return
                               }
-                              // Fallback if formatting or serial is custom
-                              setPdvError(`Serial inválido ou produto não localizado no bazar.`)
+                              setPdvError(`Código de barras não localizado ou produto não cadastrado neste evento.`)
                             }
                           } catch (err) {
-                            setPdvError('Falha ao localizar serial no estoque.')
+                            setPdvError('Falha ao localizar código de barras no estoque.')
                           }
                         }}
                         className="flex gap-2"
@@ -1297,12 +2410,12 @@ export default function BazarManager() {
                         <input
                           type="text"
                           ref={serialInputRef}
-                          placeholder="Clique aqui e use o leitor de código de barras ou digite o serial..."
+                          placeholder="Clique aqui e use o leitor de código de barras ou digite o código..."
                           value={serialInput}
                           onChange={(e) => setSerialNumberInput(e.target.value)}
-                          className="w-full border border-slate-350 rounded-xl px-3 py-2.5 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-teal-700 bg-slate-50 focus:bg-white"
+                          className="w-full border border-slate-350 rounded-xl px-3 py-2.5 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-teal-700 bg-slate-55/10 focus:bg-white"
                         />
-                        <button type="submit" className="bg-teal-700 text-white px-5 rounded-xl font-bold text-xs">
+                        <button type="submit" className="bg-teal-700 text-white px-5 rounded-xl font-bold text-xs hover:bg-teal-800 transition-colors">
                           Adicionar
                         </button>
                       </form>
@@ -1326,7 +2439,7 @@ export default function BazarManager() {
                                 <div className="space-y-0.5">
                                   <h4 className="text-xs font-bold text-slate-800">{item.titulo}</h4>
                                   <span className="text-[10px] text-slate-500 font-mono font-bold">
-                                    {item.needsSerialResolve ? 'Aguardando alocação automática' : `Serial: ${item.serialNumber}`}
+                                    {item.needsSerialResolve ? 'Aguardando alocação automática' : `Código de Barras: ${item.serialNumber}`}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-4">
@@ -1343,7 +2456,7 @@ export default function BazarManager() {
                           </div>
                         ) : (
                           <div className="py-12 text-center text-slate-400 italic text-xs">
-                            O carrinho de compras está vazio. Digite um código de serial ou clique em itens disponíveis na vitrine externa.
+                            O carrinho de compras está vazio. Digite ou escaneie o código de barras ou selecione itens disponíveis na vitrine.
                           </div>
                         )}
                       </div>
@@ -1375,7 +2488,7 @@ export default function BazarManager() {
                               className={`py-2 rounded-xl text-[10px] font-black tracking-wider transition-all border ${
                                 formaPagamento === method
                                   ? 'bg-teal-700 border-teal-700 text-white shadow-xs'
-                                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                                  : 'bg-slate-55/10 border-slate-200 text-slate-650 hover:bg-slate-100'
                               }`}
                             >
                               {method}
@@ -1391,27 +2504,17 @@ export default function BazarManager() {
                           if (carrinho.length === 0) return
                           setSubmittingVenda(true)
                           
-                          // Resolve any click items (where needsSerialResolve: true) to fetch real available seriais
+                          // Resolve any click items (where needsSerialResolve: true) to fetch real available barcodes
                           const finalSerials = []
                           try {
                             for (let item of carrinho) {
                               if (item.needsSerialResolve) {
-                                // Fetch first available serial number for this product ID
-                                const res = await fetch(`/api/bazar/produtos/pesquisa?bazarId=${selectedBazar.id}&nome=${encodeURIComponent(item.titulo)}&statusItem=DISPONIVEL`)
-                                if (res.ok) {
-                                  // Locate the catalog details and extract serial
-                                  // We can call search products endpoint. Since search returns products,
-                                  // we must obtain a serial.
-                                  // Let's implement /api/bazar/produtos/{id}/seriais-disponiveis on backend for immediate allocation!
-                                  // But wait, can we do a direct find by product ID?
-                                  // Yes! Let's write the controller endpoint `/api/bazar/produtos/{id}/serial-disponivel` which is extremely clean.
-                                  const serRes = await fetch(`/api/bazar/produtos/${item.produtoId}/serial-disponivel`)
-                                  if (serRes.ok) {
-                                    const serialObj = await serRes.json()
-                                    finalSerials.push(serialObj.serialNumber)
-                                  } else {
-                                    throw new Error(`Sem estoque disponível para ${item.titulo}`)
-                                  }
+                                const serRes = await fetch(`/api/balcao-vendas/produtos/${item.produtoId}/serial-disponivel`)
+                                if (serRes.ok) {
+                                  const serialObj = await serRes.json()
+                                  finalSerials.push(serialObj.serialNumber)
+                                } else {
+                                  throw new Error(`Sem estoque disponível para ${item.titulo}`)
                                 }
                               } else {
                                 finalSerials.push(item.serialNumber)
@@ -1419,7 +2522,7 @@ export default function BazarManager() {
                             }
 
                             // Confirm checkout
-                            const checkoutRes = await fetch('/api/bazar/vendas/confirmar', {
+                            const checkoutRes = await fetch('/api/balcao-vendas/vendas/confirmar', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({
@@ -1430,7 +2533,7 @@ export default function BazarManager() {
                             })
 
                             if (checkoutRes.ok) {
-                              triggerToast('Venda registrada e cupom impresso com sucesso!')
+                              triggerToast('Venda registrada com sucesso!')
                               setCarrinho([])
                               setShowPDVModal(false)
                               loadDashboard(selectedBazar.id)
@@ -1449,7 +2552,7 @@ export default function BazarManager() {
                         className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-black text-xs py-3 rounded-2xl shadow-md transition-all flex items-center justify-center gap-1.5"
                       >
                         {submittingVenda ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                        Confirmar Checkout
+                        Finalizar Venda
                       </button>
                       <button
                         onClick={() => setShowPDVModal(false)}
@@ -1464,6 +2567,227 @@ export default function BazarManager() {
             </div>
           )}
 
+          {/* Modal: Conclude / Reopen Event */}
+          {showEventStateModal && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+              <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="p-6 bg-slate-55/10 border-b border-slate-150 flex justify-between items-center">
+                  <h3 className="font-bold text-slate-800">
+                    {eventStateAction === 'CONCLUIR' ? 'Encerrar Evento de Vendas' : 'Reabrir Evento de Vendas'}
+                  </h3>
+                  <button onClick={() => setShowEventStateModal(false)} className="text-slate-400 hover:text-slate-600">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <form onSubmit={handleEventStateAction} className="p-6 space-y-4">
+                  <div className="text-xs font-semibold text-slate-600 leading-relaxed">
+                    {eventStateAction === 'CONCLUIR' 
+                      ? 'Ao encerrar este evento de vendas, nenhuma nova venda poderá ser registrada. Os produtos em estoque continuarão cadastrados para fins de consulta e faturamento isolado.'
+                      : 'Ao reabrir este evento de vendas, a equipe responsável poderá realizar novas transações no Frente de Caixa (PDV).'
+                    }
+                  </div>
+
+                  {responsaveis.length === 0 ? (
+                    <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-4 text-xs font-bold leading-normal">
+                      Por favor, cadastre membros na Equipe Responsável antes de realizar esta ação.
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Quem é o responsável efetuando a ação?</label>
+                      <select
+                        required
+                        value={stateActionSelectedMembroId}
+                        onChange={(e) => setStateActionSelectedMembroId(e.target.value)}
+                        className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-650 bg-white"
+                      >
+                        <option value="">Selecione um organizador...</option>
+                        {responsaveis.map(r => (
+                          <option key={r.id} value={r.membroId}>{r.nomeMembro}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowEventStateModal(false)}
+                      className="bg-white border border-slate-200 text-slate-600 font-semibold text-xs px-4 py-2.5 rounded-xl hover:bg-slate-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={responsaveis.length === 0 || !stateActionSelectedMembroId}
+                      className="bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm disabled:opacity-50"
+                    >
+                      {eventStateAction === 'CONCLUIR' ? 'Confirmar Encerramento' : 'Reabrir Evento'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Modal: Estorno de Item de Venda */}
+          {showEstornoModal && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+              <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="p-6 bg-slate-55/10 border-b border-slate-150 flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <RotateCcw className="h-5 w-5 text-teal-700" />
+                    <h3 className="font-bold text-slate-800">Estornar Item de Venda</h3>
+                  </div>
+                  <button onClick={() => setShowEstornoModal(false)} className="text-slate-400 hover:text-slate-600 bg-white border border-slate-200 p-1.5 rounded-lg">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <form onSubmit={handleEstornoSubmit} className="p-6 space-y-4">
+                  <div className="text-xs text-slate-500 leading-normal">
+                    Informe o código de barras do item vendido. Ao confirmar, o valor arrecadado será reduzido e o item retornará automaticamente ao estoque com status <strong>Disponível</strong>.
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Código de Barras</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ex: CB3E8D9F"
+                      value={estornoBarcode}
+                      onChange={(e) => setEstornoBarcode(e.target.value)}
+                      className="w-full border border-slate-350 rounded-xl px-3 py-2.5 text-sm font-mono font-bold uppercase focus:outline-none focus:border-teal-650 bg-slate-55/5 focus:bg-white"
+                    />
+                  </div>
+
+                  {responsaveis.length === 0 ? (
+                    <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-4 text-xs font-bold leading-normal">
+                      Por favor, cadastre membros na Equipe Responsável antes de realizar um estorno.
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Autorizado por (Organizador)</label>
+                      <select
+                        required
+                        value={estornoSelectedMembroId}
+                        onChange={(e) => setEstornoSelectedMembroId(e.target.value)}
+                        className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-650 bg-white"
+                      >
+                        <option value="">Selecione um organizador...</option>
+                        {responsaveis.map(r => (
+                          <option key={r.id} value={r.membroId}>{r.nomeMembro}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowEstornoModal(false)}
+                      className="bg-white border border-slate-200 text-slate-600 font-semibold text-xs px-4 py-2.5 rounded-xl hover:bg-slate-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={responsaveis.length === 0 || !estornoBarcode.trim() || !estornoSelectedMembroId}
+                      className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm disabled:opacity-50"
+                    >
+                      Confirmar Estorno
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Modal: Prévia de Etiquetas */}
+          {showLabelsPrintModal && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200 no-print-backdrop">
+              <div className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] print-visible">
+                
+                <style dangerouslySetInnerHTML={{ __html: `
+                  @media print {
+                    body { background: white !important; color: black !important; }
+                    .no-print, header, nav, aside, button, .no-print-backdrop {
+                      display: none !important;
+                    }
+                    .overflow-y-auto, .flex-grow {
+                      overflow: visible !important;
+                      height: auto !important;
+                      max-height: none !important;
+                    }
+                    .print-visible {
+                      position: absolute !important;
+                      left: 0 !important;
+                      top: 0 !important;
+                      width: 100% !important;
+                      height: auto !important;
+                      display: block !important;
+                    }
+                  }
+                ` }} />
+
+                <div className="p-6 bg-slate-55/10 border-b border-slate-150 flex justify-between items-center shrink-0 no-print">
+                  <div className="flex items-center gap-2">
+                    <Printer className="h-5 w-5 text-teal-700" />
+                    <h3 className="font-extrabold text-slate-800">Prévia de Etiquetas de Código de Barras</h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => window.print()}
+                      className="bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+                    >
+                      <Printer className="h-4 w-4" />
+                      Imprimir Etiquetas ({labelsToPrint.length})
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setShowLabelsPrintModal(false)
+                        setSelectedLabelProductIds([])
+                      }} 
+                      className="text-slate-400 hover:text-slate-600 bg-white border border-slate-200 p-2 rounded-xl"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex-grow overflow-y-auto p-8 space-y-6">
+                  <div className="no-print bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs font-semibold text-slate-500 mb-6 leading-relaxed">
+                    Abaixo está a prévia das etiquetas térmicas. Ao clicar no botão <strong>Imprimir Etiquetas</strong>, a janela nativa de impressão será exibida configurada para ocultar o resto do sistema. Ajuste a margem e escala do seu navegador se necessário.
+                  </div>
+
+                  <div id="printable-labels-container" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 justify-items-center">
+                    {labelsToPrint.map((item) => (
+                      <div key={item.id} className="label-card border border-slate-200 p-4 w-[180px] h-[180px] flex flex-col justify-between items-center bg-white rounded-xl shadow-xs">
+                        <div className="text-[10px] font-black text-slate-800 uppercase tracking-tight text-center line-clamp-2 w-full leading-normal">
+                          {item.produtoTitulo}
+                        </div>
+
+                        <div className="my-2 flex items-center justify-center">
+                          <img 
+                            src={`https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(item.serialNumber)}&scale=2&rotate=N&includetext=false`} 
+                            alt={item.serialNumber} 
+                            className="h-10 w-auto object-contain" 
+                          />
+                        </div>
+
+                        <div className="text-[9px] font-mono font-bold text-slate-500 tracking-wider">
+                          {item.serialNumber}
+                        </div>
+
+                        <div className="text-xs font-black text-slate-900 border-t border-slate-100 pt-1 w-full text-center">
+                          R$ {item.preco?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

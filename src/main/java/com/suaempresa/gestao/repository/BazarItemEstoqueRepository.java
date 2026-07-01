@@ -14,5 +14,6 @@ public interface BazarItemEstoqueRepository extends JpaRepository<BazarItemEstoq
     long countByProdutoBazarId(Long bazarId);
     long countByProdutoBazarIdAndStatusItem(Long bazarId, String statusItem);
     
+    List<BazarItemEstoque> findByProdutoBazarId(Long bazarId);
     Optional<BazarItemEstoque> findBySerialNumber(String serialNumber);
 }

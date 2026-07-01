@@ -12,5 +12,6 @@ public record BazarProdutoFormDTO(
     @NotNull(message = "O preço é obrigatório")
     @Positive(message = "O preço deve ser positivo")
     BigDecimal preco,
-    String fotoUrl
+    String fotoUrl,
+    Integer quantidade
 ) {}

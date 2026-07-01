@@ -13,3 +13,61 @@ body {
   background-color: #f8fafc; /* bg-slate-50 */
   color: #1e293b; /* text-slate-800 */
 }
+
+/* Print styles */
+@media print {
+  /* Hide screen-only items */
+  .no-print, 
+  header, 
+  nav, 
+  aside,
+  button,
+  .fixed:not(.print-visible),
+  .backdrop-blur-sm,
+  .bg-slate-900\/40,
+  .z-50:not(.print-visible) {
+    display: none !important;
+  }
+
+  /* Reset layout constraints to allow natural multi-page printing */
+  html, body, #root, main, .print-container, .overflow-y-auto, .flex-grow {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    position: relative !important;
+    display: block !important;
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  #printable-labels-container {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
+    gap: 12px !important;
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  .label-card {
+    width: 180px !important;
+    height: 180px !important;
+    border: 1px solid #e2e8f0 !important;
+    padding: 12px !important;
+    box-sizing: border-box !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    text-align: center !important;
+    background: white !important;
+    border-radius: 8px !important;
+  }
+}

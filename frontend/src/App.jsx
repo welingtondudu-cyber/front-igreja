@@ -325,7 +325,7 @@ function App() {
       case 'dashboards': return 'Financeiro / Dashboards'
       case 'analitico': return 'Financeiro / Analítico'
       case 'voting': return 'Assembleia / Votar'
-      case 'bazar': return 'Bazar Beneficente'
+      case 'bazar': return 'Balcão de Vendas'
       default: return ''
     }
   }
@@ -1238,12 +1238,12 @@ function App() {
             </button>
             <button
               onClick={() => navigateTo('bazar')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                 currentView === 'bazar' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-600 hover:bg-slate-50'
               }`}
             >
               <ShoppingCart className="h-5 w-5 text-emerald-700" />
-              Bazar Beneficente
+              Balcão de Vendas
             </button>
           </div>
 

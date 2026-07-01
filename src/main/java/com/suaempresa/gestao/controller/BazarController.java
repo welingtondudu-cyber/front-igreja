@@ -19,9 +19,9 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/bazar")
+@RequestMapping("/api/balcao-vendas")
 @RequiredArgsConstructor
-@Tag(name = "Bazar Beneficente", description = "Endpoints para gestão de eventos de bazar, produtos e vendas (PDV)")
+@Tag(name = "Balcão de Vendas", description = "Gestão de eventos de vendas e estoque local")
 public class BazarController {
 
     private final BazarService bazarService;
@@ -45,10 +45,29 @@ public class BazarController {
         return ResponseEntity.status(HttpStatus.CREATED).body(bazarService.criarBazar(form));
     }
 
+    @PutMapping("/periodos/{id}")
+    @Operation(summary = "Editar dados de um período de venda")
+    public ResponseEntity<BazarPeriodoDTO> editarBazar(@PathVariable Long id, @RequestBody @Valid BazarPeriodoFormDTO form) {
+        return ResponseEntity.ok(bazarService.editarBazar(id, form));
+    }
+
+    @DeleteMapping("/periodos/{id}")
+    @Operation(summary = "Excluir um período de venda")
+    public ResponseEntity<Void> excluirBazar(@PathVariable Long id, @RequestParam Long membroId) {
+        bazarService.excluirBazar(id, membroId);
+        return ResponseEntity.noContent().build();
+    }
+
     @PutMapping("/periodos/{id}/concluir")
     @Operation(summary = "Concluir definitivamente um bazar (Trava de segurança ativada)")
-    public ResponseEntity<BazarPeriodoDTO> concluirBazar(@PathVariable Long id) {
-        return ResponseEntity.ok(bazarService.concluirBazar(id));
+    public ResponseEntity<BazarPeriodoDTO> concluirBazar(@PathVariable Long id, @RequestParam Long membroId) {
+        return ResponseEntity.ok(bazarService.concluirBazar(id, membroId));
+    }
+
+    @PutMapping("/periodos/{id}/reabrir")
+    @Operation(summary = "Reabrir um bazar concluído")
+    public ResponseEntity<BazarPeriodoDTO> reabrirBazar(@PathVariable Long id, @RequestParam Long membroId) {
+        return ResponseEntity.ok(bazarService.reabrirBazar(id, membroId));
     }
 
     @GetMapping("/periodos/{id}/dashboard")
@@ -102,9 +121,23 @@ public class BazarController {
             @RequestParam(required = false) String nome,
             @RequestParam(required = false) String statusItem,
             @RequestParam(required = false) BigDecimal precoMin,
-            @RequestParam(required = false) BigDecimal precoMax
+            @RequestParam(required = false) BigDecimal precoMax,
+            @RequestParam(required = false) String codigoBarras
     ) {
-        return ResponseEntity.ok(bazarService.pesquisarProdutos(bazarId, nome, statusItem, precoMin, precoMax));
+        return ResponseEntity.ok(bazarService.pesquisarProdutos(bazarId, nome, statusItem, precoMin, precoMax, codigoBarras));
+    }
+
+    @PutMapping("/produtos/{id}")
+    @Operation(summary = "Editar dados de um produto")
+    public ResponseEntity<BazarProdutoDTO> editarProduto(@PathVariable Long id, @RequestBody @Valid BazarProdutoFormDTO form) {
+        return ResponseEntity.ok(bazarService.editarProduto(id, form));
+    }
+
+    @DeleteMapping("/produtos/{id}")
+    @Operation(summary = "Excluir um produto")
+    public ResponseEntity<Void> excluirProduto(@PathVariable Long id, @RequestParam Long membroId) {
+        bazarService.excluirProduto(id, membroId);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/produtos/{produtoId}/serial-disponivel")
@@ -127,5 +160,20 @@ public class BazarController {
     public ResponseEntity<Void> estornarVenda(@PathVariable Long id) {
         bazarService.estornarVenda(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/itens/estorno")
+    @Operation(summary = "Estornar item de estoque (código de barras) individual devolvendo para disponível")
+    public ResponseEntity<Void> estornarItem(
+            @RequestParam String serialNumber,
+            @RequestParam Long membroId) {
+        bazarService.estornarItem(serialNumber, membroId);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/periodos/{id}/itens")
+    @Operation(summary = "Listar todos os itens de estoque (código de barras) de um bazar")
+    public ResponseEntity<List<Map<String, Object>>> listarItensEstoque(@PathVariable Long id) {
+        return ResponseEntity.ok(bazarService.listarItensEstoque(id));
     }
 }

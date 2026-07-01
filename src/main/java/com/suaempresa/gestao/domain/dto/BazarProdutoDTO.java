@@ -10,5 +10,6 @@ public record BazarProdutoDTO(
     BigDecimal preco,
     String fotoUrl,
     Long totalEstoque,
-    Long totalVendido
+    Long totalVendido,
+    String codigoBarras
 ) {}

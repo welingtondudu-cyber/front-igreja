@@ -10,10 +10,10 @@ import java.util.List;
 public interface BazarPeriodoRepository extends JpaRepository<BazarPeriodo, Long> {
 
     @Query("SELECT bp FROM BazarPeriodo bp WHERE " +
-           "(:nome IS NULL OR LOWER(bp.nomeBazar) LIKE LOWER(CONCAT('%', :nome, '%'))) AND " +
-           "(:status IS NULL OR bp.status = :status) AND " +
-           "(:dataInicio IS NULL OR bp.dataInicio >= :dataInicio) AND " +
-           "(:dataFim IS NULL OR bp.dataInicio <= :dataFim) " +
+           "(CAST(:nome AS String) IS NULL OR LOWER(bp.nomeBazar) LIKE LOWER(CONCAT('%', CAST(:nome AS String), '%'))) AND " +
+           "(CAST(:status AS String) IS NULL OR bp.status = :status) AND " +
+           "(CAST(:dataInicio AS java.time.LocalDateTime) IS NULL OR bp.dataInicio >= :dataInicio) AND " +
+           "(CAST(:dataFim AS java.time.LocalDateTime) IS NULL OR bp.dataInicio <= :dataFim) " +
            "ORDER BY bp.dataInicio DESC")
     List<BazarPeriodo> pesquisarBazares(
             @Param("nome") String nome,

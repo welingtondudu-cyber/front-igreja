@@ -107,6 +107,16 @@ public class DatabaseSanitizer implements CommandLineRunner {
                     "venda_id BIGINT REFERENCES gestao.bazar_vendas(id) ON DELETE SET NULL, " +
                     "data_atualizacao TIMESTAMP DEFAULT NOW()" +
                     ")");
+
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS gestao.balcao_historico (" +
+                    "id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, " +
+                    "bazar_id BIGINT, " +
+                    "membro_id BIGINT REFERENCES gestao.membros(id) ON DELETE SET NULL, " +
+                    "acao VARCHAR(100) NOT NULL, " +
+                    "descricao TEXT, " +
+                    "data_acao TIMESTAMP DEFAULT NOW()" +
+                    ")");
+
             System.out.println("--- BAZAR MODULE TABLES CREATED SUCCESSFULLY ---");
         } catch (Exception ex) {
             System.err.println("Could not create Bazar tables: " + ex.getMessage());

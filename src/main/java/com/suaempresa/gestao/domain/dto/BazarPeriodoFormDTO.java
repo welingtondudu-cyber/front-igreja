@@ -6,5 +6,7 @@ import jakarta.validation.constraints.Size;
 public record BazarPeriodoFormDTO(
     @NotBlank(message = "O nome do bazar não pode ser vazio")
     @Size(max = 100, message = "O nome do bazar deve ter no máximo 100 caracteres")
-    String nomeBazar
+    String nomeBazar,
+
+    java.time.LocalDateTime dataInicio
 ) {}
