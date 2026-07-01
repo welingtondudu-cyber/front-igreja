@@ -27,7 +27,7 @@ public class TrilhaConteudo {
     @Column(length = 2000)
     private String resumo;
 
-    @Column(name = "texto_completo", length = 100000)
+    @Column(name = "texto_completo", columnDefinition = "TEXT")
     private String textoCompleto;
 
     @Column(name = "video_url")

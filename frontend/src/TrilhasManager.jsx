@@ -3,12 +3,19 @@ import {
   BookOpen, Play, CheckCircle2, ChevronRight, BookOpenCheck,
   Video, FileText, ArrowLeft, Loader2, Sparkles, CheckSquare, Award,
   Plus, X, HelpCircle, AlertCircle, Check, Search, Pencil, FileDown,
-  Pause, RefreshCw, Layers, User, Upload, Trash2
+  Pause, RefreshCw, Layers, User, Upload, Trash2, Info
 } from 'lucide-react'
 import RichTextEditor from './RichTextEditor'
 
 export default function TrilhasManager() {
   const membroIdSimulado = 1
+
+  // Feedback banner state
+  const [feedback, setFeedback] = useState(null)
+  const showFeedback = (tipo, texto) => {
+    setFeedback({ tipo, texto })
+    setTimeout(() => setFeedback(null), 5000)
+  }
 
   // Estados para o Aluno/Membro Comum
   const [trilhas, setTrilhas] = useState([])
@@ -282,7 +289,7 @@ export default function TrilhasManager() {
   const handleSaveTrilha = async (e) => {
     e.preventDefault()
     if (!trilhaTitulo || !trilhaDescricao) {
-      alert('Preencha título e descrição')
+      showFeedback('error', 'Preencha título e descrição')
       return
     }
 
@@ -309,10 +316,13 @@ export default function TrilhasManager() {
         setTrilhaImagemUrl('')
         setTrilhaAtorId('')
         fetchTrilhas()
-        alert(editingTrilhaId ? 'Estudo atualizado com sucesso!' : 'Novo estudo criado com sucesso!')
+        showFeedback('success', editingTrilhaId ? 'Estudo atualizado com sucesso!' : 'Novo estudo criado com sucesso!')
+      } else {
+        const errMsg = await res.text().catch(() => '')
+        showFeedback('error', errMsg || 'Erro ao salvar agrupamento no servidor.')
       }
     } catch (err) {
-      alert('Erro ao salvar trilha.')
+      showFeedback('error', 'Erro ao salvar trilha.')
     }
   }
 
@@ -329,7 +339,7 @@ export default function TrilhasManager() {
   const handleSaveConteudo = async (e) => {
     e.preventDefault()
     if (!conteudoTitulo || !conteudoResumo) {
-      alert('Preencha título e resumo')
+      showFeedback('error', 'Preencha título e resumo')
       return
     }
 
@@ -375,10 +385,13 @@ export default function TrilhasManager() {
         if (adminMode) {
           fetchAllConteudosAdmin()
         }
-        alert(editingConteudoId ? 'Conteúdo atualizado com sucesso!' : 'Conteúdo criado com sucesso!')
+        showFeedback('success', editingConteudoId ? 'Conteúdo atualizado com sucesso!' : 'Conteúdo criado com sucesso!')
+      } else {
+        const errMsg = await res.text().catch(() => '')
+        showFeedback('error', errMsg || `Erro ao salvar conteúdo (Status ${res.status}).`)
       }
     } catch (err) {
-      alert('Erro de conexão ao salvar conteúdo.')
+      showFeedback('error', 'Erro de conexão ao salvar conteúdo.')
     }
   }
 
@@ -515,6 +528,20 @@ export default function TrilhasManager() {
           </p>
         </div>
       </div>
+
+      {feedback && (
+        <div className={`px-4 py-3 rounded-xl border flex items-center gap-2 text-sm font-semibold transition-all ${
+          feedback.tipo === 'success' ? 'bg-emerald-50 border-emerald-250 text-emerald-800' : 
+          feedback.tipo === 'error' ? 'bg-red-50 border-red-200 text-red-800' :
+          'bg-slate-50 border-slate-200 text-slate-700'
+        }`}>
+          {feedback.tipo === 'success' ? <CheckCircle2 className="h-5 w-5 text-emerald-700 shrink-0" /> :
+           feedback.tipo === 'error' ? <AlertCircle className="h-5 w-5 text-red-700 shrink-0" /> :
+           <Info className="h-5 w-5 text-slate-500 shrink-0" />
+          }
+          <span>{feedback.texto}</span>
+        </div>
+      )}
 
       {/* SELETOR ADMIN / ALUNO E ABAS PRINCIPAIS */}
       <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 bg-white p-4 border border-slate-200 rounded-2xl shadow-sm">
@@ -1108,7 +1135,7 @@ export default function TrilhasManager() {
                 <select
                   value={filterAdminTrilhaId}
                   onChange={(e) => setFilterAdminTrilhaId(e.target.value)}
-                  className="px-2 py-1.5 border border-slate-250 rounded-lg text-[11px] font-bold text-slate-700 bg-white focus:outline-none focus:border-emerald-650 cursor-pointer w-full sm:w-36 max-w-[150px] shrink-0"
+                  className="pl-3 pr-8 py-1.5 border border-slate-250 rounded-lg text-xs font-bold text-slate-700 bg-white focus:outline-none focus:border-emerald-650 cursor-pointer w-full sm:w-48 md:w-56 shrink-0"
                 >
                   <option value="TODOS">Todos os agrupamentos</option>
                   <option value="SOLTOS">Sem agrupamento (Avulsos)</option>
