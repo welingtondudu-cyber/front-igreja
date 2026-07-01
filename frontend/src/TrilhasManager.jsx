@@ -43,6 +43,7 @@ export default function TrilhasManager() {
   const [allConteudosAdmin, setAllConteudosAdmin] = useState([])
   const [loadingAdminConteudos, setLoadingAdminConteudos] = useState(false)
   const [buscaAdminNome, setBuscaAdminNome] = useState('')
+  const [filterAdminTrilhaId, setFilterAdminTrilhaId] = useState('TODOS')
   const [buscaAdminTrilhas, setBuscaAdminTrilhas] = useState('')
 
   // Modal e Formulário de Criação/Edição de Trilha/Curso/Devocional
@@ -440,7 +441,16 @@ export default function TrilhasManager() {
 
   // Filtragem do Admin para Aulas
   const adminConteudosFiltrados = allConteudosAdmin.filter(c => {
-    return buscaAdminNome.trim() === '' || c.titulo.toLowerCase().includes(buscaAdminNome.toLowerCase())
+    const matchNome = buscaAdminNome.trim() === '' || c.titulo.toLowerCase().includes(buscaAdminNome.toLowerCase())
+    if (!matchNome) return false
+
+    if (filterAdminTrilhaId === 'SOLTOS') {
+      return !c.trilhaId
+    }
+    if (filterAdminTrilhaId !== 'TODOS') {
+      return String(c.trilhaId) === String(filterAdminTrilhaId)
+    }
+    return true
   })
 
   // Progresso computado
@@ -1094,7 +1104,19 @@ export default function TrilhasManager() {
             <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 border-b border-slate-100 pb-3">
               <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wider">Aulas e Leituras</h3>
               
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={filterAdminTrilhaId}
+                  onChange={(e) => setFilterAdminTrilhaId(e.target.value)}
+                  className="px-2 py-1.5 border border-slate-250 rounded-lg text-[11px] font-bold text-slate-700 bg-white focus:outline-none focus:border-emerald-650 cursor-pointer"
+                >
+                  <option value="TODOS">Todos os agrupamentos</option>
+                  <option value="SOLTOS">Sem agrupamento (Avulsos)</option>
+                  {trilhas.map(t => (
+                    <option key={t.id} value={t.id}>{t.titulo}</option>
+                  ))}
+                </select>
+
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                   <input
@@ -1192,61 +1214,60 @@ export default function TrilhasManager() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-455 uppercase mb-1">Tipo de Estudo *</label>
-                  <select
-                    value={trilhaTipo}
-                    onChange={(e) => setTrilhaTipo(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none bg-white font-semibold text-slate-700"
-                  >
-                    <option value="TRILHA">Trilha Completa</option>
-                    <option value="PREGACAO">Pregação</option>
-                    <option value="DEVOCIONAL">Devocional Diário</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-455 uppercase mb-1">Imagem de Capa</label>
-                  <div className="flex items-center gap-3 mt-1">
-                    {trilhaImagemUrl && (
-                      <img src={trilhaImagemUrl} alt="Preview" className="w-12 h-12 rounded-xl object-cover border border-slate-200" />
-                    )}
-                    <div className="relative flex-grow">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onload = (event) => {
-                              setTrilhaImagemUrl(event.target.result);
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                        className="hidden"
-                        id="trilhaImageUploadInput"
-                      />
-                      <label
-                        htmlFor="trilhaImageUploadInput"
-                        className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-650 bg-white font-semibold text-slate-700 cursor-pointer flex items-center justify-between hover:bg-slate-50 transition-colors"
-                      >
-                        <span className="truncate pr-2">{trilhaImagemUrl ? 'Alterar Capa' : 'Selecionar Capa'}</span>
-                        <Upload className="h-4 w-4 text-slate-400 shrink-0" />
-                      </label>
-                    </div>
-                    {trilhaImagemUrl && (
-                      <button
-                        type="button"
-                        onClick={() => setTrilhaImagemUrl('')}
-                        className="p-2 border border-red-200 text-red-650 hover:bg-red-50 rounded-xl transition-colors"
-                        title="Limpar Capa"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-455 uppercase mb-1">Tipo de Estudo *</label>
+                <select
+                  value={trilhaTipo}
+                  onChange={(e) => setTrilhaTipo(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none bg-white font-semibold text-slate-700"
+                >
+                  <option value="TRILHA">Trilha Completa</option>
+                  <option value="PREGACAO">Pregação</option>
+                  <option value="DEVOCIONAL">Devocional Diário</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-455 uppercase mb-1">Imagem de Capa</label>
+                <div className="flex items-center gap-3 mt-1">
+                  {trilhaImagemUrl && (
+                    <img src={trilhaImagemUrl} alt="Preview" className="w-12 h-12 rounded-xl object-cover border border-slate-200" />
+                  )}
+                  <div className="relative flex-grow">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            setTrilhaImagemUrl(event.target.result);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="hidden"
+                      id="trilhaImageUploadInput"
+                    />
+                    <label
+                      htmlFor="trilhaImageUploadInput"
+                      className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-650 bg-white font-semibold text-slate-700 cursor-pointer flex items-center justify-between hover:bg-slate-50 transition-colors"
+                    >
+                      <span className="truncate pr-2">{trilhaImagemUrl ? 'Alterar Capa' : 'Selecionar Capa'}</span>
+                      <Upload className="h-4 w-4 text-slate-400 shrink-0" />
+                    </label>
                   </div>
+                  {trilhaImagemUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setTrilhaImagemUrl('')}
+                      className="p-2.5 border border-red-200 text-red-650 hover:bg-red-50 rounded-xl transition-colors shrink-0"
+                      title="Limpar Capa"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               </div>
 

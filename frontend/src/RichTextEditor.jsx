@@ -10,16 +10,14 @@ import { useState, useEffect } from 'react'
 
 function ResizableImageComponent({ node, updateAttributes, selected }) {
   const { src, alt, width } = node.attributes
-  const [isResizing, setIsResizing] = useState(false)
 
   const handleMouseDown = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    setIsResizing(true)
 
     const startX = e.clientX
-    // Find the real rendering element to get initial clientWidth
-    const imgEl = e.target.closest('.react-renderer')?.querySelector('img')
+    const wrapper = e.target.closest('[data-node-view-wrapper]')
+    const imgEl = wrapper ? wrapper.querySelector('img') : null
     const startWidth = imgEl ? imgEl.clientWidth : 300
 
     const handleMouseMove = (moveEvent) => {
@@ -30,7 +28,6 @@ function ResizableImageComponent({ node, updateAttributes, selected }) {
     }
 
     const handleMouseUp = () => {
-      setIsResizing(false)
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
@@ -40,26 +37,25 @@ function ResizableImageComponent({ node, updateAttributes, selected }) {
   }
 
   return (
-    <NodeViewWrapper className="inline-block relative max-w-full my-3">
-      <div className={`relative inline-block max-w-full ${selected ? 'ring-2 ring-emerald-500 rounded-lg' : ''}`}>
+    <NodeViewWrapper as="span" className="inline-block relative max-w-full my-3">
+      <span className={`relative inline-block max-w-full ${selected ? 'ring-2 ring-emerald-500 rounded-lg' : ''}`}>
         <img
           src={src}
           alt={alt}
           style={{ width: width || 'auto', height: 'auto', display: 'block' }}
-          className="max-w-full rounded-lg pointer-events-none border border-slate-200"
+          className="max-w-full rounded-lg border border-slate-200 cursor-pointer select-none"
         />
         
-        {/* Resize handle dot at bottom-right corner */}
         {selected && (
-          <div
+          <span
             onMouseDown={handleMouseDown}
             className="absolute bottom-2 right-2 w-4 h-4 bg-emerald-600 border-2 border-white rounded-full cursor-se-resize shadow-md flex items-center justify-center hover:scale-125 transition-transform active:bg-emerald-700 select-none z-30"
             title="Arraste para redimensionar"
           >
-            <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-          </div>
+            <span className="w-1.5 h-1.5 bg-white rounded-full block"></span>
+          </span>
         )}
-      </div>
+      </span>
     </NodeViewWrapper>
   )
 }
@@ -67,25 +63,11 @@ function ResizableImageComponent({ node, updateAttributes, selected }) {
 const ResizableImage = BaseImage.extend({
   addAttributes() {
     return {
-      src: {
-        default: null,
-        renderHTML: attributes => ({ src: attributes.src }),
-        parseHTML: element => element.getAttribute('src'),
-      },
-      alt: {
-        default: null,
-        renderHTML: attributes => ({ alt: attributes.alt }),
-        parseHTML: element => element.getAttribute('alt'),
-      },
-      title: {
-        default: null,
-        renderHTML: attributes => ({ title: attributes.title }),
-        parseHTML: element => element.getAttribute('title'),
-      },
+      ...this.parent?.(),
       width: {
         default: 'auto',
         renderHTML: attributes => {
-          if (attributes.width === 'auto') return {}
+          if (!attributes.width || attributes.width === 'auto') return {}
           return { width: attributes.width }
         },
         parseHTML: element => element.getAttribute('width') || 'auto',
