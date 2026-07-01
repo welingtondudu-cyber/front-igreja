@@ -11,6 +11,7 @@ export default function MembrosDashboard() {
 
   // Current year for admissions filter
   const [selectedAno, setSelectedAno] = useState(new Date().getFullYear())
+  const [compararAno, setCompararAno] = useState('')
 
   const fetchDashboardData = async () => {
     setLoading(true)
@@ -68,19 +69,21 @@ export default function MembrosDashboard() {
     new Set((data.historicoAdmissoes || []).map((x) => x.ano))
   ).sort((a, b) => b - a)
 
-  // Filter admissions history for selected year
-  const admissoesAnoSelecionado = (data.historicoAdmissoes || []).filter(
-    (x) => x.ano === selectedAno
-  )
-
   // Calculate year totals for comparison quickcards
   const totalPorAno = (data.historicoAdmissoes || []).reduce((acc, curr) => {
     acc[curr.ano] = (acc[curr.ano] || 0) + curr.quantidade
     return acc;
   }, {})
 
+  const yearsToCompare = [selectedAno]
+  if (compararAno) {
+    yearsToCompare.push(compararAno)
+  }
+
   const maxQtdAdmissoes = Math.max(
-    ...admissoesAnoSelecionado.map((x) => x.quantidade),
+    ...(data.historicoAdmissoes || [])
+      .filter((x) => yearsToCompare.includes(x.ano))
+      .map((x) => x.quantidade),
     1
   )
 
@@ -88,6 +91,8 @@ export default function MembrosDashboard() {
     const pct = (qtd / maxQtdAdmissoes) * 80
     return `${Math.max(4, pct)}%`
   }
+
+  const nomesMeses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
 
   // Get active members count with birthday today
   const aniversariantesHoje = (data.aniversariantesMes || []).filter(
@@ -223,20 +228,47 @@ export default function MembrosDashboard() {
               <p className="text-[10px] font-medium text-slate-400">Novas inclusões de membros consolidadas mensalmente</p>
             </div>
             
-            {/* YEAR SELECTOR */}
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-emerald-700 shrink-0" />
-              <select
-                value={selectedAno}
-                onChange={(e) => setSelectedAno(parseInt(e.target.value))}
-                className="border border-slate-200 bg-white text-slate-800 rounded-xl px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:border-emerald-600 transition-colors shadow-2xs"
-              >
-                {anosDisponiveis.map((y) => (
-                  <option key={y} value={y}>
-                    Ano {y} ({totalPorAno[y] || 0} novos)
-                  </option>
-                ))}
-              </select>
+            {/* DUAL YEAR SELECTORS */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Principal:</span>
+                <select
+                  value={selectedAno}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value)
+                    setSelectedAno(val)
+                    if (compararAno === val) {
+                      setCompararAno('')
+                    }
+                  }}
+                  className="border border-slate-200 bg-white text-slate-800 rounded-xl px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:border-emerald-600 transition-colors shadow-2xs"
+                >
+                  {anosDisponiveis.map((y) => (
+                    <option key={y} value={y}>
+                      Ano {y} ({totalPorAno[y] || 0} novos)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Comparar:</span>
+                <select
+                  value={compararAno || ''}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setCompararAno(val ? parseInt(val) : '')
+                  }}
+                  className="border border-slate-200 bg-white text-slate-800 rounded-xl px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:border-emerald-600 transition-colors shadow-2xs"
+                >
+                  <option value="">Nenhum</option>
+                  {anosDisponiveis.filter(y => y !== selectedAno).map((y) => (
+                    <option key={y} value={y}>
+                      Ano {y} ({totalPorAno[y] || 0} novos)
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -260,28 +292,61 @@ export default function MembrosDashboard() {
 
                 {/* Bars */}
                 <div className="absolute inset-0 flex items-end px-2" style={{ justifyContent: 'space-around' }}>
-                  {admissoesAnoSelecionado.map((a, idx) => (
-                    <div key={idx} className="flex flex-col items-center gap-1 flex-1 relative group">
-                      <div className="flex items-end justify-center w-full h-32">
-                        <div
-                          className="bg-emerald-600 w-4 sm:w-6 rounded-t transition-all hover:bg-emerald-500 relative cursor-pointer"
-                          style={{ height: getBarHeight(a.quantidade) }}
-                        >
-                          {/* Tooltip on hover */}
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] font-bold py-1 px-1.5 rounded-md shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap z-10">
-                            {a.quantidade} {a.quantidade === 1 ? 'membro' : 'membros'}
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const m = i + 1
+                    const labelMes = nomesMeses[m - 1]
+                    const priVal = (data.historicoAdmissoes || []).find(x => x.ano === selectedAno && x.mes === m)?.quantidade || 0
+                    const compVal = compararAno ? ((data.historicoAdmissoes || []).find(x => x.ano === compararAno && x.mes === m)?.quantidade || 0) : 0
+
+                    return (
+                      <div key={m} className="flex flex-col items-center gap-1 flex-1 relative group">
+                        <div className="flex items-end justify-center w-full h-32 gap-1">
+                          {/* Primary Year Bar */}
+                          <div
+                            className="bg-emerald-600 w-3 sm:w-4 rounded-t transition-all hover:bg-emerald-500 relative cursor-pointer group/pri"
+                            style={{ height: getBarHeight(priVal) }}
+                          >
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] font-bold py-1 px-1.5 rounded-md shadow-sm opacity-0 group-hover/pri:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap z-10">
+                              {selectedAno}: {priVal} {priVal === 1 ? 'membro' : 'membros'}
+                            </div>
                           </div>
+
+                          {/* Comparison Year Bar */}
+                          {compararAno && (
+                            <div
+                              className="bg-blue-500 w-3 sm:w-4 rounded-t transition-all hover:bg-blue-400 relative cursor-pointer group/comp"
+                              style={{ height: getBarHeight(compVal) }}
+                            >
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-slate-800 text-white text-[9px] font-bold py-1 px-1.5 rounded-md shadow-sm opacity-0 group-hover/comp:opacity-100 transition-opacity duration-150 pointer-events-none whitespace-nowrap z-10">
+                                {compararAno}: {compVal} {compVal === 1 ? 'membro' : 'membros'}
+                              </div>
+                            </div>
+                          )}
                         </div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 select-none font-mono">
+                          {labelMes}
+                        </span>
                       </div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 select-none font-mono">
-                        {a.labelMes}
-                      </span>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Color Legend (only if comparison is active) */}
+          {compararAno && (
+            <div className="flex gap-4 justify-center text-xs font-semibold pb-2 border-t border-slate-50 pt-3 select-none">
+              <div className="flex items-center gap-1.5">
+                <div className="h-3 w-3 bg-emerald-600 rounded"></div>
+                <span className="text-slate-650">Ano {selectedAno}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="h-3 w-3 bg-blue-500 rounded"></div>
+                <span className="text-slate-650">Ano {compararAno}</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* DEMOGRAPHIC DISTRIBUTION */}
