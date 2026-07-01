@@ -67,7 +67,21 @@ function ResizableImageComponent({ node, updateAttributes, selected }) {
 const ResizableImage = BaseImage.extend({
   addAttributes() {
     return {
-      ...this.parent?.(),
+      src: {
+        default: null,
+        renderHTML: attributes => ({ src: attributes.src }),
+        parseHTML: element => element.getAttribute('src'),
+      },
+      alt: {
+        default: null,
+        renderHTML: attributes => ({ alt: attributes.alt }),
+        parseHTML: element => element.getAttribute('alt'),
+      },
+      title: {
+        default: null,
+        renderHTML: attributes => ({ title: attributes.title }),
+        parseHTML: element => element.getAttribute('title'),
+      },
       width: {
         default: 'auto',
         renderHTML: attributes => {
