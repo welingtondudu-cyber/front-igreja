@@ -1025,19 +1025,19 @@ export default function TrilhasManager() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
           {/* COLUNA 1: AGRUPAMENTOS (CURSOS E PREGAÇÕES) */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 border-b border-slate-100 pb-3">
-              <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wider">Cursos e Pregações</h3>
+            <div className="flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-3 border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wider">Agrupamento de aulas, pregações e devocionais</h3>
               
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 justify-end">
                 {/* 🔍 FILTRO POR NOME EM CURSOS E PREGAÇÕES */}
-                <div className="relative">
+                <div className="relative flex-grow sm:flex-grow-0">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Filtrar cursos..."
+                    placeholder="Filtrar..."
                     value={buscaAdminTrilhas}
                     onChange={(e) => setBuscaAdminTrilhas(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 border border-slate-250 rounded-lg text-[11px] focus:outline-none focus:border-emerald-650 bg-white"
+                    className="pl-8 pr-3 py-1.5 border border-slate-250 rounded-lg text-[11px] focus:outline-none focus:border-emerald-650 bg-white w-full sm:w-40"
                   />
                 </div>
 
@@ -1052,7 +1052,7 @@ export default function TrilhasManager() {
                     setShowTrilhaModal(true);
                   }}
                   className="flex items-center justify-center h-8 w-8 bg-emerald-700 text-white rounded-lg hover:bg-emerald-650 transition-all shrink-0"
-                  title="Criar Trilha"
+                  title="Criar Agrupamento"
                 >
                   <Plus className="h-4 w-4" />
                 </button>
@@ -1101,14 +1101,14 @@ export default function TrilhasManager() {
 
           {/* COLUNA 2: AULAS E LEITURAS */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 border-b border-slate-100 pb-3">
-              <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wider">Aulas e Leituras</h3>
+            <div className="flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-3 border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wider">Aulas, leituras e devocionais</h3>
               
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 justify-end">
                 <select
                   value={filterAdminTrilhaId}
                   onChange={(e) => setFilterAdminTrilhaId(e.target.value)}
-                  className="px-2 py-1.5 border border-slate-250 rounded-lg text-[11px] font-bold text-slate-700 bg-white focus:outline-none focus:border-emerald-650 cursor-pointer"
+                  className="px-2 py-1.5 border border-slate-250 rounded-lg text-[11px] font-bold text-slate-700 bg-white focus:outline-none focus:border-emerald-650 cursor-pointer w-full sm:w-36 max-w-[150px] shrink-0"
                 >
                   <option value="TODOS">Todos os agrupamentos</option>
                   <option value="SOLTOS">Sem agrupamento (Avulsos)</option>
@@ -1117,14 +1117,14 @@ export default function TrilhasManager() {
                   ))}
                 </select>
 
-                <div className="relative">
+                <div className="relative flex-grow sm:flex-grow-0">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                   <input
                     type="text"
                     placeholder="Filtrar por nome..."
                     value={buscaAdminNome}
                     onChange={(e) => setBuscaAdminNome(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 border border-slate-250 rounded-lg text-[11px] focus:outline-none focus:border-emerald-650 bg-white"
+                    className="pl-8 pr-3 py-1.5 border border-slate-250 rounded-lg text-[11px] focus:outline-none focus:border-emerald-650 bg-white w-full sm:w-36"
                   />
                 </div>
 

@@ -715,8 +715,8 @@ export default function EscalasManager() {
                 <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wider">Lista de Cultos Agendados</h3>
                 
                 {/* FILTROS DE PESQUISA E SELEÇÃO */}
-                <div className="flex flex-col sm:flex-row gap-3 items-center w-full sm:w-auto">
-                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 w-full sm:w-48 shadow-xs">
+                <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full sm:w-auto">
+                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 flex-grow sm:flex-none sm:w-48 shadow-xs">
                     <Search className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                     <input
                       type="text"
@@ -727,34 +727,37 @@ export default function EscalasManager() {
                     />
                   </div>
 
-                  {/* Status Selector */}
-                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-xs w-full sm:w-auto">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase">Status:</span>
-                    <select
-                      value={filterStatus}
-                      onChange={(e) => setFilterStatus(e.target.value)}
-                      className="bg-transparent text-xs font-bold text-slate-805 focus:outline-none cursor-pointer"
-                    >
-                      <option value="TODOS">Todos</option>
-                      <option value="AGENDADO">Agendado</option>
-                      <option value="CONCLUIDO">Concluído</option>
-                    </select>
-                  </div>
+                  {/* Status & Período side-by-side on mobile */}
+                  <div className="grid grid-cols-2 sm:flex gap-2.5 sm:gap-3 w-full sm:w-auto">
+                    {/* Status Selector */}
+                    <div className="flex items-center justify-between sm:justify-start gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-xs w-full sm:w-auto">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase shrink-0">Status:</span>
+                      <select
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        className="bg-transparent text-xs font-bold text-slate-805 focus:outline-none cursor-pointer w-full"
+                      >
+                        <option value="TODOS">Todos</option>
+                        <option value="AGENDADO">Agendado</option>
+                        <option value="CONCLUIDO">Concluído</option>
+                      </select>
+                    </div>
 
-                  {/* Period Selector */}
-                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-xs w-full sm:w-auto">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase">Período:</span>
-                    <select
-                      value={filterPeriodo}
-                      onChange={(e) => setFilterPeriodo(e.target.value)}
-                      className="bg-transparent text-xs font-bold text-slate-805 focus:outline-none cursor-pointer"
-                    >
-                      <option value="TODOS">Todos</option>
-                      <option value="HOJE">Hoje</option>
-                      <option value="PROX_7_DIAS">Próximos 7 dias</option>
-                      <option value="ESTE_MES">Este mês</option>
-                      <option value="PROXIMO_MES">Mês que vem</option>
-                    </select>
+                    {/* Period Selector */}
+                    <div className="flex items-center justify-between sm:justify-start gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-xs w-full sm:w-auto">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase shrink-0">Período:</span>
+                      <select
+                        value={filterPeriodo}
+                        onChange={(e) => setFilterPeriodo(e.target.value)}
+                        className="bg-transparent text-xs font-bold text-slate-805 focus:outline-none cursor-pointer w-full"
+                      >
+                        <option value="TODOS">Todos</option>
+                        <option value="HOJE">Hoje</option>
+                        <option value="PROX_7_DIAS">Próximos 7 dias</option>
+                        <option value="ESTE_MES">Este mês</option>
+                        <option value="PROXIMO_MES">Mês que vem</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1316,8 +1319,8 @@ export default function EscalasManager() {
               <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wider">Minhas Escalas Cadastradas</h3>
               
               {/* FILTROS DE PESQUISA E SELEÇÃO */}
-              <div className="flex flex-col sm:flex-row gap-3 items-center w-full sm:w-auto">
-                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 w-full sm:w-48 shadow-xs">
+              <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full sm:w-auto">
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 flex-grow sm:flex-none sm:w-48 shadow-xs">
                   <Search className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                   <input
                     type="text"
@@ -1328,34 +1331,37 @@ export default function EscalasManager() {
                   />
                 </div>
 
-                {/* Status Selector */}
-                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-xs w-full sm:w-auto">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase">Status:</span>
-                  <select
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                    className="bg-transparent text-xs font-bold text-slate-855 focus:outline-none cursor-pointer"
-                  >
-                    <option value="TODOS">Todos</option>
-                    <option value="AGENDADO">Agendado</option>
-                    <option value="CONCLUIDO">Concluído</option>
-                  </select>
-                </div>
+                {/* Status & Período side-by-side on mobile */}
+                <div className="grid grid-cols-2 sm:flex gap-2.5 sm:gap-3 w-full sm:w-auto">
+                  {/* Status Selector */}
+                  <div className="flex items-center justify-between sm:justify-start gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-xs w-full sm:w-auto">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase shrink-0">Status:</span>
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="bg-transparent text-xs font-bold text-slate-855 focus:outline-none cursor-pointer w-full"
+                    >
+                      <option value="TODOS">Todos</option>
+                      <option value="AGENDADO">Agendado</option>
+                      <option value="CONCLUIDO">Concluído</option>
+                    </select>
+                  </div>
 
-                {/* Period Selector */}
-                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-xs w-full sm:w-auto">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase">Período:</span>
-                  <select
-                    value={filterPeriodo}
-                    onChange={(e) => setFilterPeriodo(e.target.value)}
-                    className="bg-transparent text-xs font-bold text-slate-855 focus:outline-none cursor-pointer"
-                  >
-                    <option value="TODOS">Todos</option>
-                    <option value="HOJE">Hoje</option>
-                    <option value="PROX_7_DIAS">Próximos 7 dias</option>
-                    <option value="ESTE_MES">Este mês</option>
-                    <option value="PROXIMO_MES">Mês que vem</option>
-                  </select>
+                  {/* Period Selector */}
+                  <div className="flex items-center justify-between sm:justify-start gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-xs w-full sm:w-auto">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase shrink-0">Período:</span>
+                    <select
+                      value={filterPeriodo}
+                      onChange={(e) => setFilterPeriodo(e.target.value)}
+                      className="bg-transparent text-xs font-bold text-slate-855 focus:outline-none cursor-pointer w-full"
+                    >
+                      <option value="TODOS">Todos</option>
+                      <option value="HOJE">Hoje</option>
+                      <option value="PROX_7_DIAS">Próximos 7 dias</option>
+                      <option value="ESTE_MES">Este mês</option>
+                      <option value="PROXIMO_MES">Mês que vem</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>

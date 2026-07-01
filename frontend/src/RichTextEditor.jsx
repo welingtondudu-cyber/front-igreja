@@ -9,7 +9,7 @@ import BaseImage from '@tiptap/extension-image'
 import { useState, useEffect } from 'react'
 
 function ResizableImageComponent({ node, updateAttributes, selected }) {
-  const { src, alt, width } = node.attributes
+  const { src, alt, width } = node.attrs
 
   const handleMouseDown = (e) => {
     e.preventDefault()
