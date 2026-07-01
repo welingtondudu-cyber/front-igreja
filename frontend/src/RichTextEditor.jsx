@@ -1,12 +1,87 @@
-import { useEditor, EditorContent } from '@tiptap/react'
+import { useEditor, EditorContent, NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Underline } from '@tiptap/extension-underline'
 import { Table } from '@tiptap/extension-table'
 import { TableRow } from '@tiptap/extension-table-row'
 import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
-import { Image } from '@tiptap/extension-image'
+import { Image as BaseImage } from '@tiptap/extension-image'
 import { useState, useEffect } from 'react'
+
+function ResizableImageComponent({ node, updateAttributes, selected }) {
+  const { src, alt, width } = node.attributes
+  const [isResizing, setIsResizing] = useState(false)
+
+  const handleMouseDown = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsResizing(true)
+
+    const startX = e.clientX
+    // Find the real rendering element to get initial clientWidth
+    const imgEl = e.target.closest('.react-renderer')?.querySelector('img')
+    const startWidth = imgEl ? imgEl.clientWidth : 300
+
+    const handleMouseMove = (moveEvent) => {
+      const currentX = moveEvent.clientX
+      const diffX = currentX - startX
+      const newWidth = Math.max(80, startWidth + diffX)
+      updateAttributes({ width: `${newWidth}px` })
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }
+
+  return (
+    <NodeViewWrapper className="inline-block relative max-w-full my-3">
+      <div className={`relative inline-block max-w-full ${selected ? 'ring-2 ring-emerald-500 rounded-lg' : ''}`}>
+        <img
+          src={src}
+          alt={alt}
+          style={{ width: width || 'auto', height: 'auto', display: 'block' }}
+          className="max-w-full rounded-lg pointer-events-none border border-slate-200"
+        />
+        
+        {/* Resize handle dot at bottom-right corner */}
+        {selected && (
+          <div
+            onMouseDown={handleMouseDown}
+            className="absolute bottom-2 right-2 w-4 h-4 bg-emerald-600 border-2 border-white rounded-full cursor-se-resize shadow-md flex items-center justify-center hover:scale-125 transition-transform active:bg-emerald-700 select-none z-30"
+            title="Arraste para redimensionar"
+          >
+            <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+          </div>
+        )}
+      </div>
+    </NodeViewWrapper>
+  )
+}
+
+const ResizableImage = BaseImage.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      width: {
+        default: 'auto',
+        renderHTML: attributes => {
+          if (attributes.width === 'auto') return {}
+          return { width: attributes.width }
+        },
+        parseHTML: element => element.getAttribute('width') || 'auto',
+      },
+    }
+  },
+  addNodeView() {
+    return ReactNodeViewRenderer(ResizableImageComponent)
+  },
+})
 import {
   Bold, Italic, Underline as UnderlineIcon, List, ListOrdered,
   Table as TableIcon, Plus, Trash2, ArrowDown, ArrowRight, Image as ImageIcon,
@@ -247,7 +322,7 @@ export default function RichTextEditor({ value, onChange }) {
       TableRow,
       TableCell,
       TableHeader,
-      Image.configure({
+      ResizableImage.configure({
         inline: true,
         allowBase64: true,
       }),

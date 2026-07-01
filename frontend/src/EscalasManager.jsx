@@ -47,6 +47,11 @@ export default function EscalasManager() {
 
   // Novos estados para edição de culto, adição de voluntário e escalas expandidas
   const [selectedMembroIdToAdd, setSelectedMembroIdToAdd] = useState('')
+  const [selectedMembrosList, setSelectedMembrosList] = useState([]) // lista de membros selecionados para adicionar
+  const [showDropdownMembros, setShowDropdownMembros] = useState(false)
+  const [selectedAllocatedIds, setSelectedAllocatedIds] = useState([]) // voluntários selecionados para remoção em massa
+  const [filterAllocatedNome, setFilterAllocatedNome] = useState('') // filtro por nome dos alocados
+  const [filterAllocatedStatus, setFilterAllocatedStatus] = useState('TODOS') // filtro por status dos alocados
   const [editingEventoId, setEditingEventoId] = useState(null)
   const [expandedEvents, setExpandedEvents] = useState([])
 
@@ -217,6 +222,11 @@ export default function EscalasManager() {
 
   const handleSelectEvento = async (eventoId) => {
     setSelectedEventoId(eventoId)
+    setSelectedMembrosList([])
+    setShowDropdownMembros(false)
+    setSelectedAllocatedIds([])
+    setFilterAllocatedNome('')
+    setFilterAllocatedStatus('TODOS')
     setLoadingEquipe(true)
     try {
       const res = await fetch(`/api/escalas/evento/${eventoId}`)
@@ -253,6 +263,11 @@ export default function EscalasManager() {
   // Ao selecionar um cargo/ministério na visão de escalas, buscar membros daquele grupo
   const handleSelectCargoId = async (grupoId) => {
     setSelectedCargoId(grupoId)
+    setSelectedMembrosList([])
+    setShowDropdownMembros(false)
+    setSelectedAllocatedIds([])
+    setFilterAllocatedNome('')
+    setFilterAllocatedStatus('TODOS')
     if (!grupoId) {
       setMembrosDoGrupo([])
       setSelectedMembroIdToAdd('')
@@ -403,6 +418,68 @@ export default function EscalasManager() {
     setEscalasEdit(prev =>
       prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
     )
+  }
+
+  const handleRemoveVoluntarioEditById = (membroId) => {
+    setEscalasEdit(prev => prev.filter(item => String(item.membroId) !== String(membroId)))
+  }
+
+  const handleVoluntarioEditChangeById = (membroId, field, value) => {
+    setEscalasEdit(prev =>
+      prev.map(item =>
+        String(item.membroId) === String(membroId) ? { ...item, [field]: value } : item
+      )
+    )
+  }
+
+  const handleAddVoluntariosMulti = () => {
+    if (selectedMembrosList.length === 0) {
+      setFeedback({ tipo: 'error', texto: 'Selecione pelo menos um membro para adicionar' })
+      setTimeout(() => setFeedback(null), 3000)
+      return
+    }
+    
+    let adicionados = 0
+    let duplicados = 0
+    const novasEscalas = [...escalasEdit]
+    
+    selectedMembrosList.forEach(membroId => {
+      const jaExiste = novasEscalas.some(item => String(item.membroId) === String(membroId))
+      if (jaExiste) {
+        duplicados++
+      } else {
+        const mbObj = membros.find(m => String(m.id) === String(membroId))
+        novasEscalas.push({
+          id: 'new-' + Date.now() + '-' + membroId,
+          membroId: membroId,
+          nomeMembro: mbObj ? mbObj.nomeCompleto : '',
+          grupoId: selectedCargoId,
+          funcaoEspecifica: '',
+          statusConfirmacao: 'PENDENTE'
+        })
+        adicionados++
+      }
+    })
+    
+    setEscalasEdit(novasEscalas)
+    setSelectedMembrosList([])
+    
+    if (duplicados > 0) {
+      setFeedback({ 
+        tipo: 'success', 
+        texto: `${adicionados} voluntário(s) adicionado(s). ${duplicados} já estavam escalados.` 
+      })
+    } else {
+      setFeedback({ tipo: 'success', texto: `${adicionados} voluntário(s) adicionado(s) com sucesso.` })
+    }
+    setTimeout(() => setFeedback(null), 4000)
+  }
+
+  const handleBatchRemove = () => {
+    setEscalasEdit(prev => prev.filter(item => !selectedAllocatedIds.includes(String(item.membroId))))
+    setSelectedAllocatedIds([])
+    setFeedback({ tipo: 'success', texto: 'Voluntários selecionados foram removidos da escala.' })
+    setTimeout(() => setFeedback(null), 3000)
   }
 
   const handleSaveEquipe = async () => {
@@ -897,146 +974,307 @@ export default function EscalasManager() {
                         <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mt-0.5">Gerenciamento de Equipe</p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                        {activeCargo && (
-                          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-xs w-full sm:w-60">
-                            <select
-                              value={selectedMembroIdToAdd}
-                              onChange={(e) => setSelectedMembroIdToAdd(e.target.value)}
-                              className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer w-full"
-                            >
-                              <option value="">Selecione o Membro...</option>
-                              {membrosDoGrupo.map(m => (
-                                <option key={m.id} value={m.id}>{m.nomeCompleto}</option>
-                              ))}
-                            </select>
+                        {(ev.status || 'AGENDADO') === 'CONCLUIDO' ? (
+                          <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm">
+                            <AlertCircle className="h-4 w-4 text-amber-700 shrink-0" />
+                            <span>Culto/Evento Concluído (Escala Fechada)</span>
                           </div>
+                        ) : (
+                          <>
+                            {activeCargo && (
+                              <div className="relative w-full sm:w-60">
+                                <button
+                                  type="button"
+                                  onClick={() => setShowDropdownMembros(!showDropdownMembros)}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-xs flex items-center justify-between text-xs font-bold text-slate-800 hover:bg-slate-100 transition-colors"
+                                >
+                                  <span className="truncate">
+                                    {selectedMembrosList.length === 0
+                                      ? 'Selecionar membros...'
+                                      : `${selectedMembrosList.length} selecionado(s)`}
+                                  </span>
+                                  <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />
+                                </button>
+                                
+                                {showDropdownMembros && (
+                                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 p-2 max-h-60 overflow-y-auto space-y-1 animate-in fade-in duration-150">
+                                    <div className="flex gap-2 pb-2 mb-2 border-b border-slate-100 shrink-0">
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedMembrosList(membrosDoGrupo.map(m => String(m.id)))}
+                                        className="flex-1 py-1 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded text-[10px] font-bold transition-all text-center"
+                                      >
+                                        Todos
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedMembrosList([])}
+                                        className="flex-1 py-1 px-2 bg-slate-150 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-bold transition-all text-center"
+                                      >
+                                        Limpar
+                                      </button>
+                                    </div>
+                                    {membrosDoGrupo.length === 0 ? (
+                                      <span className="block text-[10px] text-slate-400 text-center py-2 font-medium">Nenhum membro disponível</span>
+                                    ) : (
+                                      membrosDoGrupo.map(m => {
+                                        const isSelected = selectedMembrosList.includes(String(m.id))
+                                        return (
+                                          <button
+                                            key={m.id}
+                                            type="button"
+                                            onClick={() => {
+                                              if (isSelected) {
+                                                setSelectedMembrosList(selectedMembrosList.filter(id => id !== String(m.id)))
+                                              } else {
+                                                setSelectedMembrosList([...selectedMembrosList, String(m.id)])
+                                              }
+                                            }}
+                                            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left text-xs hover:bg-slate-50 transition-colors"
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={isSelected}
+                                              readOnly
+                                              className="rounded border-slate-350 text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5 cursor-pointer"
+                                            />
+                                            <span className="font-semibold text-slate-700 truncate">{m.nomeCompleto}</span>
+                                          </button>
+                                        )
+                                      })
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            <button
+                              type="button"
+                              onClick={handleAddVoluntariosMulti}
+                              disabled={!activeCargo || selectedMembrosList.length === 0}
+                              className="px-3.5 py-2 bg-white border border-emerald-250 text-emerald-800 rounded-xl text-xs font-bold hover:bg-emerald-50 transition-all flex items-center justify-center gap-1 shadow-sm disabled:opacity-50 flex-grow sm:flex-grow-0"
+                            >
+                              <UserPlus className="h-4 w-4" />
+                              <span>Adicionar</span>
+                            </button>
+                            <button
+                              onClick={handleSaveEquipe}
+                              className="px-4 py-2 bg-emerald-700 text-white rounded-xl text-xs font-bold hover:bg-emerald-650 transition-all shadow-sm flex-grow sm:flex-grow-0 text-center"
+                            >
+                              Salvar Escala
+                            </button>
+                          </>
                         )}
-                        <button
-                          onClick={() => {
-                            if (!selectedMembroIdToAdd) {
-                              setFeedback({ tipo: 'error', texto: 'Selecione um membro para adicionar' })
-                              setTimeout(() => setFeedback(null), 3000)
-                              return
-                            }
-                            const jaExiste = escalasEdit.some(item => String(item.membroId) === String(selectedMembroIdToAdd))
-                            if (jaExiste) {
-                              setFeedback({ tipo: 'error', texto: 'Este voluntário já está escalado para este culto/evento.' })
-                              setTimeout(() => setFeedback(null), 4000)
-                              return
-                            }
-                            const mbObj = membros.find(m => String(m.id) === String(selectedMembroIdToAdd))
-                            setEscalasEdit(prev => [
-                              ...prev,
-                              {
-                                id: 'new-' + Date.now(),
-                                membroId: selectedMembroIdToAdd,
-                                nomeMembro: mbObj ? mbObj.nomeCompleto : '',
-                                grupoId: selectedCargoId,
-                                funcaoEspecifica: '',
-                                statusConfirmacao: 'PENDENTE'
-                              }
-                            ])
-                          }}
-                          disabled={!activeCargo || !selectedMembroIdToAdd}
-                          className="px-3.5 py-2 bg-white border border-emerald-250 text-emerald-800 rounded-xl text-xs font-bold hover:bg-emerald-50 transition-all flex items-center justify-center gap-1 shadow-sm disabled:opacity-50 flex-grow sm:flex-grow-0"
-                        >
-                          <UserPlus className="h-4 w-4" />
-                          <span>Adicionar</span>
-                        </button>
-                        <button
-                          onClick={handleSaveEquipe}
-                          className="px-4 py-2 bg-emerald-700 text-white rounded-xl text-xs font-bold hover:bg-emerald-650 transition-all shadow-sm flex-grow sm:flex-grow-0 text-center"
-                        >
-                          Salvar Escala
-                        </button>
                       </div>
                     </div>
 
-                    <div className="p-5 flex-grow overflow-y-auto">
+                    <div className="p-5 flex-grow overflow-y-auto space-y-4">
+                      {/* FILTRO DOS VOLUNTÁRIOS ALOCADOS */}
+                      {activeCargo && !loadingEquipe && (
+                        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between border-b border-slate-200 pb-3 bg-white p-3.5 rounded-xl shadow-xs">
+                          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 w-full sm:w-48 shadow-xs">
+                              <Search className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                              <input
+                                type="text"
+                                placeholder="Filtrar voluntário..."
+                                value={filterAllocatedNome}
+                                onChange={(e) => setFilterAllocatedNome(e.target.value)}
+                                className="bg-transparent text-xs font-semibold text-slate-850 focus:outline-none w-full"
+                              />
+                            </div>
+                            
+                            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-xs w-full sm:w-auto">
+                              <span className="text-[9px] font-bold text-slate-400 uppercase">Status:</span>
+                              <select
+                                value={filterAllocatedStatus}
+                                onChange={(e) => setFilterAllocatedStatus(e.target.value)}
+                                className="bg-transparent text-xs font-bold text-slate-805 focus:outline-none cursor-pointer"
+                              >
+                                <option value="TODOS">Todos</option>
+                                <option value="PENDENTE">Pendente</option>
+                                <option value="CONFIRMADO">Confirmado</option>
+                                <option value="RECUSADO">Recusado</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* AÇÕES EM MASSA */}
+                          {((ev.status || 'AGENDADO') !== 'CONCLUIDO') && (
+                            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                              {escalasEdit.some(item => {
+                                const mb = membros.find(m => String(m.id) === String(item.membroId))
+                                return item.grupoId ? item.grupoId === selectedCargoId : (mb && mb.cargoId === selectedCargoId)
+                              }) && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const filteredIds = escalasEdit
+                                      .filter(item => {
+                                        const mb = membros.find(m => String(m.id) === String(item.membroId))
+                                        const pertence = item.grupoId ? item.grupoId === selectedCargoId : (mb && mb.cargoId === selectedCargoId)
+                                        if (!pertence) return false
+                                        if (filterAllocatedNome && mb && !mb.nomeCompleto.toLowerCase().includes(filterAllocatedNome.toLowerCase())) return false
+                                        if (filterAllocatedStatus !== 'TODOS' && item.statusConfirmacao !== filterAllocatedStatus) return false
+                                        return true
+                                      })
+                                      .map(item => String(item.membroId))
+                                      
+                                    const allSelected = filteredIds.every(id => selectedAllocatedIds.includes(id))
+                                    if (allSelected) {
+                                      setSelectedAllocatedIds(selectedAllocatedIds.filter(id => !filteredIds.includes(id)))
+                                    } else {
+                                      setSelectedAllocatedIds([...new Set([...selectedAllocatedIds, ...filteredIds])])
+                                    }
+                                  }}
+                                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold transition-all shadow-sm shrink-0"
+                                >
+                                  Marcar/Desmarcar Filtrados
+                                </button>
+                              )}
+                              {selectedAllocatedIds.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={handleBatchRemove}
+                                  className="px-3.5 py-1.5 bg-red-50 border border-red-200 text-red-750 hover:bg-red-100 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 shadow-sm shrink-0"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  <span>Remover ({selectedAllocatedIds.length})</span>
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {loadingEquipe ? (
                         <div className="py-12 flex justify-center items-center">
                           <Loader2 className="h-8 w-8 text-emerald-700 animate-spin" />
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {escalasEdit.map((item, index) => {
-                            const mb = membros.find(m => String(m.id) === String(item.membroId))
-                            const pertenceAoCargo = item.grupoId 
-                                ? item.grupoId === selectedCargoId 
-                                : (mb && mb.cargoId === selectedCargoId)
+                          {escalasEdit
+                            .filter(item => {
+                              const mb = membros.find(m => String(m.id) === String(item.membroId))
+                              const pertenceAoCargo = item.grupoId 
+                                  ? item.grupoId === selectedCargoId 
+                                  : (mb && mb.cargoId === selectedCargoId)
 
-                            if (!pertenceAoCargo && selectedCargoId !== null) return null;
+                              if (!pertenceAoCargo && selectedCargoId !== null) return false
 
-                            return (
-                              <div key={item.id || index} className="bg-white border border-slate-250 rounded-xl p-4 space-y-4 shadow-sm relative flex flex-col justify-between">
-                                <button
-                                  onClick={() => handleRemoveVoluntarioEdit(index)}
-                                  className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-red-500 rounded hover:bg-slate-50 transition-all"
-                                  title="Desalocar"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
+                              if (filterAllocatedNome) {
+                                const query = filterAllocatedNome.toLowerCase()
+                                const nome = mb ? mb.nomeCompleto : (item.nomeMembro || '')
+                                if (!nome.toLowerCase().includes(query)) return false
+                              }
 
-                                <div className="space-y-3 pt-2">
-                                  <div>
-                                    <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Membro Voluntário</label>
-                                    <div className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 flex items-center gap-2">
-                                      <User className="h-3.5 w-3.5 text-emerald-700 shrink-0" />
-                                      <span>
-                                        {mb ? mb.nomeCompleto : (item.nomeMembro || 'Membro Desconhecido')}
-                                      </span>
-                                    </div>
-                                  </div>
+                              if (filterAllocatedStatus !== 'TODOS') {
+                                if (item.statusConfirmacao !== filterAllocatedStatus) return false
+                              }
 
-                                  <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                      <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Função Específica</label>
+                              return true
+                            })
+                            .map((item, index) => {
+                              const mb = membros.find(m => String(m.id) === String(item.membroId))
+                              const isConcluido = (ev.status || 'AGENDADO') === 'CONCLUIDO'
+
+                              return (
+                                <div key={item.membroId || index} className="bg-white border border-slate-250 rounded-xl p-4 space-y-4 shadow-sm relative flex flex-col justify-between">
+                                  {/* Checkbox de Seleção / Desalocação Individual */}
+                                  <div className="absolute top-2 left-2 flex items-center">
+                                    {!isConcluido && (
                                       <input
-                                        type="text"
-                                        placeholder="Ex: Teclado, Projeção"
-                                        value={item.funcaoEspecifica}
-                                        onChange={(e) => handleVoluntarioEditChange(index, 'funcaoEspecifica', e.target.value)}
-                                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-emerald-600"
+                                        type="checkbox"
+                                        checked={selectedAllocatedIds.includes(String(item.membroId))}
+                                        onChange={() => {
+                                          const idStr = String(item.membroId)
+                                          if (selectedAllocatedIds.includes(idStr)) {
+                                            setSelectedAllocatedIds(selectedAllocatedIds.filter(id => id !== idStr))
+                                          } else {
+                                            setSelectedAllocatedIds([...selectedAllocatedIds, idStr])
+                                          }
+                                        }}
+                                        className="rounded border-slate-350 text-emerald-600 focus:ring-emerald-500 h-4 w-4 cursor-pointer"
                                       />
-                                    </div>
-                                    <div>
-                                      <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Status Confirmação</label>
-                                      <select
-                                        value={item.statusConfirmacao}
-                                        onChange={(e) => handleVoluntarioEditChange(index, 'statusConfirmacao', e.target.value)}
-                                        className={`w-full px-3 py-1.5 rounded-lg text-xs font-bold border focus:outline-none focus:border-emerald-600 uppercase ${
-                                          item.statusConfirmacao === 'CONFIRMADO'
-                                            ? 'bg-green-50 border-green-200 text-green-700'
-                                            : item.statusConfirmacao === 'PENDENTE'
-                                            ? 'bg-amber-50 border-amber-250 text-amber-700'
-                                            : 'bg-red-50 border-red-200 text-red-750'
-                                        }`}
-                                      >
-                                        <option value="PENDENTE">Pendente</option>
-                                        <option value="CONFIRMADO">Confirmado</option>
-                                        <option value="RECUSADO">Recusado</option>
-                                      </select>
-                                    </div>
+                                    )}
                                   </div>
 
-                                  {item.motivoRecusa && (
-                                    <div className="text-[10px] text-red-650 bg-red-50 p-2 rounded border border-red-150">
-                                      Justificativa: {item.motivoRecusa}
-                                    </div>
+                                  {!isConcluido && (
+                                    <button
+                                      onClick={() => handleRemoveVoluntarioEditById(item.membroId)}
+                                      className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-red-500 rounded hover:bg-slate-50 transition-all"
+                                      title="Desalocar"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
                                   )}
+
+                                  <div className="space-y-3 pt-2">
+                                    <div className="pl-6">
+                                      <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Membro Voluntário</label>
+                                      <div className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 flex items-center gap-2">
+                                        <User className="h-3.5 w-3.5 text-emerald-700 shrink-0" />
+                                        <span className="truncate">
+                                          {mb ? mb.nomeCompleto : (item.nomeMembro || 'Membro Desconhecido')}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 pl-6">
+                                      <div>
+                                        <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Função Específica</label>
+                                        <input
+                                          type="text"
+                                          placeholder="Ex: Teclado, Projeção"
+                                          value={item.funcaoEspecifica}
+                                          disabled={isConcluido}
+                                          onChange={(e) => handleVoluntarioEditChangeById(item.membroId, 'funcaoEspecifica', e.target.value)}
+                                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-emerald-600 disabled:bg-slate-50 disabled:text-slate-400"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Status Confirmação</label>
+                                        <select
+                                          value={item.statusConfirmacao}
+                                          disabled={isConcluido}
+                                          onChange={(e) => handleVoluntarioEditChangeById(item.membroId, 'statusConfirmacao', e.target.value)}
+                                          className={`w-full px-3 py-1.5 rounded-lg text-xs font-bold border focus:outline-none focus:border-emerald-600 uppercase disabled:opacity-75 ${
+                                            item.statusConfirmacao === 'CONFIRMADO'
+                                              ? 'bg-green-50 border-green-200 text-green-700'
+                                              : item.statusConfirmacao === 'PENDENTE'
+                                              ? 'bg-amber-50 border-amber-250 text-amber-700'
+                                              : 'bg-red-50 border-red-200 text-red-750'
+                                          }`}
+                                        >
+                                          <option value="PENDENTE">Pendente</option>
+                                          <option value="CONFIRMADO">Confirmado</option>
+                                          <option value="RECUSADO">Recusado</option>
+                                        </select>
+                                      </div>
+                                    </div>
+
+                                    {item.motivoRecusa && (
+                                      <div className="text-[10px] text-red-650 bg-red-50 p-2 rounded border border-red-150 ml-6">
+                                        Justificativa: {item.motivoRecusa}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            )
-                          })}
+                              )
+                            })}
                           
-                          {escalasEdit.filter(item => {
-                            const mb = membros.find(m => String(m.id) === String(item.membroId))
-                            return item.grupoId ? item.grupoId === selectedCargoId : (mb && mb.cargoId === selectedCargoId)
-                          }).length === 0 && (
+                          {allocatedListFiltered.length === 0 && (
                             <div className="col-span-full py-12 flex flex-col items-center justify-center text-center text-slate-400 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
                               <Users className="h-8 w-8 mb-2 opacity-20" />
-                              <span className="text-xs font-bold text-slate-500">Nenhum voluntário escalado</span>
-                              <span className="text-[10px] mt-1">Clique em "Adicionar" para convocar um membro para este ministério.</span>
+                              <span className="text-xs font-bold text-slate-500">
+                                {filterAllocatedNome || filterAllocatedStatus !== 'TODOS'
+                                  ? 'Nenhum voluntário corresponde aos filtros aplicados'
+                                  : 'Nenhum voluntário escalado'}
+                              </span>
+                              <span className="text-[10px] mt-1">
+                                {filterAllocatedNome || filterAllocatedStatus !== 'TODOS'
+                                  ? 'Tente ajustar ou limpar os filtros no topo.'
+                                  : 'Selecione e adicione novos membros na caixa superior.'}
+                              </span>
                             </div>
                           )}
                         </div>
