@@ -1317,12 +1317,15 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
                         >
                           <option value="">Selecione...</option>
                           {activeMembersList
-                            .filter(m => m.id !== selectedMember.id)
-                            .map((m) => (
-                              <option key={m.id} value={m.id}>
-                                {m.nomeCompleto}
-                              </option>
-                            ))}
+                            .filter(m => m.matricula !== selectedMember.matricula)
+                            .map((m) => {
+                              const numericId = parseInt(m.matricula, 10);
+                              return (
+                                <option key={m.matricula} value={numericId}>
+                                  {m.nomeCompleto}
+                                </option>
+                              );
+                            })}
                         </select>
                       </div>
 

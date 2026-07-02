@@ -22,12 +22,15 @@ import {
   Download,
   Printer,
   RotateCcw,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  EyeOff
 } from 'lucide-react'
 
 export default function BazarManager() {
   // Views: 'LIST' | 'DASH'
   const [currentView, setCurrentView] = useState('LIST')
+  const [showArrecadadoAmount, setShowArrecadadoAmount] = useState(true)
   
   // States - Periodos (Bazares)
   const [bazares, setBazares] = useState([])
@@ -1358,12 +1361,24 @@ export default function BazarManager() {
             {/* Metric: Total Arrecadado */}
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex items-center justify-between">
               <div className="space-y-1">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Valor Arrecadado</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Valor Arrecadado</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowArrecadadoAmount(prev => !prev)}
+                    className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition-colors"
+                    title={showArrecadadoAmount ? "Ocultar valor arrecadado" : "Mostrar valor arrecadado"}
+                  >
+                    {showArrecadadoAmount ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
                 <div className="text-2xl font-black text-slate-800">
                   {loadingDash ? (
                     <Loader2 className="h-6 w-6 animate-spin text-teal-700" />
-                  ) : (
+                  ) : showArrecadadoAmount ? (
                     `R$ ${dashStats.totalArrecadado?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  ) : (
+                    "R$ ••••••"
                   )}
                 </div>
               </div>
