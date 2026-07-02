@@ -383,7 +383,7 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
   }
 
   const handleAddRelacionamento = async (e) => {
-    e.preventDefault()
+    if (e && e.preventDefault) e.preventDefault()
     if (!relParenteId) {
       setRelError('Selecione um membro da lista para vincular.')
       return
@@ -738,7 +738,7 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
               <Users className="h-4.5 w-4.5 text-emerald-700" />
               Adicionar Vínculo Familiar
             </h4>
-            <form onSubmit={handleAddRelacionamento} className="space-y-4">
+            <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="sm:col-span-1">
                   <label className="block text-xs font-semibold text-slate-500 mb-1">
@@ -802,7 +802,8 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
 
               <div className="flex justify-end">
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleAddRelacionamento}
                   disabled={relLoading}
                   className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all shadow-xs flex items-center gap-1.5 disabled:opacity-50"
                 >
@@ -810,7 +811,7 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
                   Adicionar Relacionamento
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         )}
 
