@@ -397,16 +397,23 @@ public class BazarService {
         BazarItemEstoque item = bazarItemEstoqueRepository.findBySerialNumber(serialNumber)
                 .orElseThrow(() -> new RegraNegocioException("Item de estoque não encontrado"));
         
+        final BazarItemEstoque itemAlvo;
         if (!"VENDIDO".equals(item.getStatusItem())) {
-            throw new RegraNegocioException("Este item não consta como vendido e não pode ser estornado.");
+            List<BazarItemEstoque> vendidosDoProduto = bazarItemEstoqueRepository.findByProdutoIdAndStatusItem(item.getProduto().getId(), "VENDIDO");
+            if (vendidosDoProduto.isEmpty()) {
+                throw new RegraNegocioException("Não constam itens vendidos para o produto '" + item.getProduto().getTitulo() + "' que possam ser estornados.");
+            }
+            itemAlvo = vendidosDoProduto.get(0);
+        } else {
+            itemAlvo = item;
         }
         
-        validarBazarAtivo(item.getProduto().getBazar().getId());
+        validarBazarAtivo(itemAlvo.getProduto().getBazar().getId());
         
         Membro membro = membroRepository.findById(membroId)
                 .orElseThrow(() -> new RegraNegocioException("Membro não encontrado"));
         
-        Long vendaId = item.getVendaId();
+        Long vendaId = itemAlvo.getVendaId();
         int qtdEstorno = quantidade != null ? quantidade : 1;
         if (qtdEstorno <= 0) {
             throw new RegraNegocioException("Quantidade de estorno inválida.");
@@ -415,7 +422,7 @@ public class BazarService {
         if (vendaId != null) {
             List<BazarItemEstoque> itensDoProdutoNaVenda = bazarItemEstoqueRepository.findByVendaId(vendaId)
                     .stream()
-                    .filter(i -> item.getProduto().getId().equals(i.getProduto().getId()) && "VENDIDO".equalsIgnoreCase(i.getStatusItem()))
+                    .filter(i -> itemAlvo.getProduto().getId().equals(i.getProduto().getId()) && "VENDIDO".equalsIgnoreCase(i.getStatusItem()))
                     .toList();
 
             if (qtdEstorno > itensDoProdutoNaVenda.size()) {
@@ -425,7 +432,7 @@ public class BazarService {
             BazarVenda venda = bazarVendaRepository.findById(vendaId)
                     .orElseThrow(() -> new RegraNegocioException("Venda não encontrada"));
 
-            BigDecimal valorEstornar = item.getProduto().getPreco().multiply(BigDecimal.valueOf(qtdEstorno));
+            BigDecimal valorEstornar = itemAlvo.getProduto().getPreco().multiply(BigDecimal.valueOf(qtdEstorno));
             BigDecimal novoValorTotal = venda.getValorTotal().subtract(valorEstornar);
 
             if (novoValorTotal.compareTo(BigDecimal.ZERO) <= 0) {
@@ -443,16 +450,16 @@ public class BazarService {
                 bazarItemEstoqueRepository.save(itemEstornar);
             }
 
-            registrarHistorico(item.getProduto().getBazar().getId(), membroId, "ESTORNO_ITEM", 
-                "Estorno de " + qtdEstorno + " unidade(s) do produto '" + item.getProduto().getTitulo() + "' (Venda ID: " + vendaId + ") efetuado por " + membro.getNomeCompleto() + ". Os itens retornaram ao estoque.");
+            registrarHistorico(itemAlvo.getProduto().getBazar().getId(), membroId, "ESTORNO_ITEM", 
+                "Estorno de " + qtdEstorno + " unidade(s) do produto '" + itemAlvo.getProduto().getTitulo() + "' (Venda ID: " + vendaId + ") efetuado por " + membro.getNomeCompleto() + ". Os itens retornaram ao estoque.");
         } else {
-            item.setStatusItem("DISPONIVEL");
-            item.setVendaId(null);
-            item.setDataAtualizacao(LocalDateTime.now());
-            bazarItemEstoqueRepository.save(item);
+            itemAlvo.setStatusItem("DISPONIVEL");
+            itemAlvo.setVendaId(null);
+            itemAlvo.setDataAtualizacao(LocalDateTime.now());
+            bazarItemEstoqueRepository.save(itemAlvo);
             
-            registrarHistorico(item.getProduto().getBazar().getId(), membroId, "ESTORNO_ITEM", 
-                "Item '" + item.getProduto().getTitulo() + "' (Código: " + serialNumber + ") foi estornado por " + membro.getNomeCompleto() + ".");
+            registrarHistorico(itemAlvo.getProduto().getBazar().getId(), membroId, "ESTORNO_ITEM", 
+                "Item '" + itemAlvo.getProduto().getTitulo() + "' (Código: " + serialNumber + ") foi estornado por " + membro.getNomeCompleto() + ".");
         }
     }
 

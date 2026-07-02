@@ -504,6 +504,8 @@ public class MembroService {
             String vinculo = r.getTipoVinculo();
             if ("PAI_MAE".equals(vinculo)) {
                 vinculo = "FILHO_A";
+            } else if ("FILHO_A".equals(vinculo)) {
+                vinculo = "PAI_MAE";
             }
             list.add(new MembroRelacionamentoDTO(
                 r.getId(),
@@ -530,13 +532,27 @@ public class MembroService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Parente não encontrado"));
                 
         String vinculo = form.tipoVinculo().toUpperCase().trim();
-        if (!"CONJUGE".equals(vinculo) && !"PAI_MAE".equals(vinculo)) {
-            throw new RegraNegocioException("Tipo de vínculo inválido. Deve ser 'CONJUGE' ou 'PAI_MAE'.");
+        if (!"CONJUGE".equals(vinculo) && !"PAI_MAE".equals(vinculo) && !"FILHO_A".equals(vinculo)) {
+            throw new RegraNegocioException("Tipo de vínculo inválido. Deve ser 'CONJUGE', 'PAI_MAE' ou 'FILHO_A'.");
         }
         
         LocalDate dataCasamento = null;
         if ("CONJUGE".equals(vinculo)) {
             dataCasamento = form.dataCasamento();
+            
+            boolean membroJaTemConjuge = membroRelacionamentoRepository.findAll().stream()
+                    .anyMatch(r -> "CONJUGE".equalsIgnoreCase(r.getTipoVinculo()) && 
+                            (r.getMembro().getId().equals(form.membroId()) || r.getParente().getId().equals(form.membroId())));
+            if (membroJaTemConjuge) {
+                throw new RegraNegocioException("Este membro já possui um cônjuge cadastrado.");
+            }
+
+            boolean parenteJaTemConjuge = membroRelacionamentoRepository.findAll().stream()
+                    .anyMatch(r -> "CONJUGE".equalsIgnoreCase(r.getTipoVinculo()) && 
+                            (r.getMembro().getId().equals(form.parenteId()) || r.getParente().getId().equals(form.parenteId())));
+            if (parenteJaTemConjuge) {
+                throw new RegraNegocioException("O parente selecionado já possui um cônjuge cadastrado.");
+            }
         } else {
             if (form.dataCasamento() != null) {
                 throw new RegraNegocioException("Data de casamento não é permitida para o tipo de vínculo '" + vinculo + "'.");
@@ -544,8 +560,8 @@ public class MembroService {
         }
         
         Optional<MembroRelacionamento> existente = membroRelacionamentoRepository.findAll().stream()
-                .filter(r -> (r.getMembro().getId().equals(form.membroId()) && r.getParente().getId().equals(form.parenteId()) && r.getTipoVinculo().equals(vinculo))
-                        || (r.getMembro().getId().equals(form.parenteId()) && r.getParente().getId().equals(form.membroId()) && r.getTipoVinculo().equals(vinculo)))
+                .filter(r -> (r.getMembro().getId().equals(form.membroId()) && r.getParente().getId().equals(form.parenteId()))
+                        || (r.getMembro().getId().equals(form.parenteId()) && r.getParente().getId().equals(form.membroId())))
                 .findFirst();
                 
         if (existente.isPresent()) {

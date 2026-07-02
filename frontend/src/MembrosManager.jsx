@@ -728,6 +728,160 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
     setShowWizard(true)
   }
 
+  const renderFamilyTab = (isEditable) => {
+    if (!selectedMember) return null;
+    return (
+      <div className="space-y-6">
+        {isEditable && (
+          <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-3">
+            <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <Users className="h-4.5 w-4.5 text-emerald-700" />
+              Adicionar Vínculo Familiar
+            </h4>
+            <form onSubmit={handleAddRelacionamento} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-1">
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">
+                    Selecionar Parente
+                  </label>
+                  <select
+                    value={relParenteId}
+                    onChange={(e) => setRelParenteId(e.target.value)}
+                    className="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs focus:outline-none bg-white font-semibold"
+                  >
+                    <option value="">Selecione...</option>
+                    {activeMembersList
+                      .filter(m => m.matricula !== selectedMember.matricula)
+                      .map((m) => {
+                        const numericId = parseInt(m.matricula, 10);
+                        return (
+                          <option key={m.matricula} value={numericId}>
+                            {m.nomeCompleto}
+                          </option>
+                        );
+                      })}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">
+                    Vínculo Familiar
+                  </label>
+                  <select
+                    value={relTipoVinculo}
+                    onChange={(e) => setRelTipoVinculo(e.target.value)}
+                    className="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs focus:outline-none bg-white font-semibold"
+                  >
+                    <option value="CONJUGE">Cônjuge</option>
+                    <option value="PAI_MAE">Pai/Mãe</option>
+                    <option value="FILHO_A">Filho(a)</option>
+                  </select>
+                </div>
+
+                {relTipoVinculo === 'CONJUGE' && (
+                  <div className="animate-in fade-in duration-150">
+                    <label className="block text-xs font-semibold text-slate-500 mb-1">
+                      Data de Casamento
+                    </label>
+                    <input
+                      type="date"
+                      value={relDataCasamento}
+                      onChange={(e) => setRelDataCasamento(e.target.value)}
+                      className="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs focus:outline-none bg-white font-semibold"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {relError && (
+                <p className="text-[10px] text-rose-600 font-bold flex items-center gap-1">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  {relError}
+                </p>
+              )}
+
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={relLoading}
+                  className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all shadow-xs flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {relLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                  Adicionar Relacionamento
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        <div className="space-y-3">
+          <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">
+            Membros Vinculados ({selectedMember.parentes?.length || 0})
+          </h4>
+          
+          {selectedMember.parentes && selectedMember.parentes.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {selectedMember.parentes.map((p) => {
+                let vinculoLabel = 'Parente'
+                if (p.tipoVinculo === 'CONJUGE') vinculoLabel = 'Cônjuge'
+                else if (p.tipoVinculo === 'PAI_MAE') vinculoLabel = 'Pai/Mãe'
+                else if (p.tipoVinculo === 'FILHO_A') vinculoLabel = 'Filho(a)'
+                
+                return (
+                  <div key={p.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-xs relative overflow-hidden group">
+                    <div className="flex items-center gap-3">
+                      <div className="h-11 w-11 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
+                        {p.fotoPerfilUrl ? (
+                          <img src={p.fotoPerfilUrl} alt={p.nomeCompleto} className="w-full h-full object-cover" />
+                        ) : (
+                          <User className="h-5 w-5 text-slate-400" />
+                        )}
+                      </div>
+                      
+                      <div>
+                        <h5 className="text-xs font-extrabold text-slate-800 line-clamp-1">{p.nomeCompleto}</h5>
+                        <span className={`inline-block text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full mt-0.5 ${
+                          p.tipoVinculo === 'CONJUGE' 
+                            ? 'bg-amber-50 text-amber-800 border border-amber-200/50' 
+                            : p.tipoVinculo === 'PAI_MAE'
+                            ? 'bg-sky-50 text-sky-800 border border-sky-200/50'
+                            : 'bg-emerald-50 text-emerald-800 border border-emerald-250/50'
+                        }`}>
+                          {vinculoLabel}
+                        </span>
+                        {p.tipoVinculo === 'CONJUGE' && p.dataCasamento && (
+                          <div className="text-[10px] text-slate-500 font-semibold mt-1 flex items-center gap-1">
+                            <span>💍 Casados desde:</span>
+                            <span className="font-bold text-slate-700">{p.dataCasamento}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {isEditable && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveRelacionamento(p.id)}
+                        className="text-slate-400 hover:text-rose-600 p-1.5 hover:bg-rose-50 rounded-lg transition-all"
+                        title="Remover relacionamento"
+                      >
+                        <Trash2 className="h-4.5 w-4.5" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-6 text-slate-400 text-xs font-semibold">
+              Nenhum parente vinculado a este membro.
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* HEADER SECTION */}
@@ -763,7 +917,7 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
             className="w-full sm:w-auto flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2 px-4 rounded-xl transition-colors shadow-sm text-sm flex-1 sm:flex-none"
           >
             <Plus className="h-4.5 w-4.5" />
-            Adicionar Convidado
+            Adicionar Visitante
           </button>
           <button
             onClick={() => {
@@ -1298,147 +1452,8 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
             )}
 
             {activeDetailTab === 'familia' && (
-              <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
-                <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-3">
-                  <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                    <Users className="h-4.5 w-4.5 text-emerald-700" />
-                    Adicionar Vínculo Familiar
-                  </h4>
-                  <form onSubmit={handleAddRelacionamento} className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="sm:col-span-1">
-                        <label className="block text-xs font-semibold text-slate-500 mb-1">
-                          Selecionar Parente
-                        </label>
-                        <select
-                          value={relParenteId}
-                          onChange={(e) => setRelParenteId(e.target.value)}
-                          className="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs focus:outline-none bg-white font-semibold"
-                        >
-                          <option value="">Selecione...</option>
-                          {activeMembersList
-                            .filter(m => m.matricula !== selectedMember.matricula)
-                            .map((m) => {
-                              const numericId = parseInt(m.matricula, 10);
-                              return (
-                                <option key={m.matricula} value={numericId}>
-                                  {m.nomeCompleto}
-                                </option>
-                              );
-                            })}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-500 mb-1">
-                          Vínculo Familiar
-                        </label>
-                        <select
-                          value={relTipoVinculo}
-                          onChange={(e) => setRelTipoVinculo(e.target.value)}
-                          className="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs focus:outline-none bg-white font-semibold"
-                        >
-                          <option value="CONJUGE">Cônjuge</option>
-                          <option value="PAI_MAE">Pai/Mãe</option>
-                        </select>
-                      </div>
-
-                      {relTipoVinculo === 'CONJUGE' && (
-                        <div className="animate-in fade-in duration-150">
-                          <label className="block text-xs font-semibold text-slate-500 mb-1">
-                            Data de Casamento
-                          </label>
-                          <input
-                            type="date"
-                            value={relDataCasamento}
-                            onChange={(e) => setRelDataCasamento(e.target.value)}
-                            className="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs focus:outline-none bg-white font-semibold"
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    {relError && (
-                      <p className="text-[10px] text-rose-600 font-bold flex items-center gap-1">
-                        <AlertCircle className="h-3.5 w-3.5" />
-                        {relError}
-                      </p>
-                    )}
-
-                    <div className="flex justify-end">
-                      <button
-                        type="submit"
-                        disabled={relLoading}
-                        className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all shadow-xs flex items-center gap-1.5 disabled:opacity-50"
-                      >
-                        {relLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                        Adicionar Relacionamento
-                      </button>
-                    </div>
-                  </form>
-                </div>
-
-                <div className="space-y-3">
-                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">
-                    Membros Vinculados ({selectedMember.parentes?.length || 0})
-                  </h4>
-                  
-                  {selectedMember.parentes && selectedMember.parentes.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {selectedMember.parentes.map((p) => {
-                        let vinculoLabel = 'Parente'
-                        if (p.tipoVinculo === 'CONJUGE') vinculoLabel = 'Cônjuge'
-                        else if (p.tipoVinculo === 'PAI_MAE') vinculoLabel = 'Pai/Mãe'
-                        else if (p.tipoVinculo === 'FILHO_A') vinculoLabel = 'Filho(a)'
-                        
-                        return (
-                          <div key={p.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-xs relative overflow-hidden group">
-                            <div className="flex items-center gap-3">
-                              <div className="h-11 w-11 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
-                                {p.fotoPerfilUrl ? (
-                                  <img src={p.fotoPerfilUrl} alt={p.nomeCompleto} className="w-full h-full object-cover" />
-                                ) : (
-                                  <User className="h-5 w-5 text-slate-400" />
-                                )}
-                              </div>
-                              
-                              <div>
-                                <h5 className="text-xs font-extrabold text-slate-800 line-clamp-1">{p.nomeCompleto}</h5>
-                                <span className={`inline-block text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full mt-0.5 ${
-                                  p.tipoVinculo === 'CONJUGE' 
-                                    ? 'bg-amber-50 text-amber-800 border border-amber-200/50' 
-                                    : p.tipoVinculo === 'PAI_MAE'
-                                    ? 'bg-sky-50 text-sky-800 border border-sky-200/50'
-                                    : 'bg-emerald-50 text-emerald-800 border border-emerald-250/50'
-                                }`}>
-                                  {vinculoLabel}
-                                </span>
-                                {p.tipoVinculo === 'CONJUGE' && p.dataCasamento && (
-                                  <div className="text-[10px] text-slate-500 font-semibold mt-1 flex items-center gap-1">
-                                    <span>💍 Casados desde:</span>
-                                    <span className="font-bold text-slate-700">{p.dataCasamento}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            <button
-                              onClick={() => handleRemoveRelacionamento(p.id)}
-                              className="text-slate-400 hover:text-rose-600 p-1.5 hover:bg-rose-50 rounded-lg transition-all"
-                              title="Remover relacionamento"
-                            >
-                              <Trash2 className="h-4.5 w-4.5" />
-                            </button>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <div className="py-8 text-center text-slate-450 italic text-xs">
-                      Nenhum relacionamento familiar cadastrado para este membro.
-                    </div>
-                  )}
-                </div>
+              <div className="p-6 max-h-[60vh] overflow-y-auto">
+                {renderFamilyTab(false)}
               </div>
             )}
 
@@ -1722,6 +1737,17 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
                   >
                     Eclesiásticos
                   </button>
+                  {wizardMode === 'edit' && (
+                    <button
+                      type="button"
+                      onClick={() => setWizardTab('familia')}
+                      className={`flex-1 py-3 text-center border-b-2 transition-colors ${
+                        wizardTab === 'familia' ? 'border-emerald-700 text-emerald-800 bg-white' : 'border-transparent hover:text-slate-800'
+                      }`}
+                    >
+                      Núcleo Familiar
+                    </button>
+                  )}
                 </div>
 
                 {/* Form Fields Scrolling Area */}
@@ -2154,6 +2180,11 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
                       </div>
                     </div>
                   )}
+                  {wizardTab === 'familia' && (
+                    <div className="space-y-4 animate-in fade-in duration-200">
+                      {renderFamilyTab(true)}
+                    </div>
+                  )}
                 </div>
 
                 {/* Wizard Footer */}
@@ -2195,8 +2226,8 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
             {/* Header */}
             <div className="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Adicionar Convidado</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Cadastro rápido de visitante ou convidado.</p>
+                <h3 className="text-lg font-bold text-slate-900">Adicionar Visitante</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Cadastro rápido de visitante no sistema.</p>
               </div>
               <button
                 onClick={() => setShowConvidadoModal(false)}
