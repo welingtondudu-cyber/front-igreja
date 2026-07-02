@@ -142,10 +142,16 @@ public class BazarController {
 
     @GetMapping("/produtos/{produtoId}/serial-disponivel")
     @Operation(summary = "Obter um serial disponível de um produto para alocação automática no PDV")
-    public ResponseEntity<Map<String, String>> obterSerialDisponivel(@PathVariable Long produtoId) {
-        String serial = bazarService.obterSerialDisponivel(produtoId);
-        Map<String, String> res = new java.util.HashMap<>();
-        res.put("serialNumber", serial);
+    public ResponseEntity<Map<String, Object>> obterSerialDisponivel(
+            @PathVariable Long produtoId,
+            @RequestParam(required = false, defaultValue = "1") Integer limit
+    ) {
+        java.util.List<String> seriais = bazarService.obterSeriaisDisponiveis(produtoId, limit);
+        Map<String, Object> res = new java.util.HashMap<>();
+        res.put("seriais", seriais);
+        if (!seriais.isEmpty()) {
+            res.put("serialNumber", seriais.get(0));
+        }
         return ResponseEntity.ok(res);
     }
 

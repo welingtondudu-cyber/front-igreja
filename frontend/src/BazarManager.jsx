@@ -1256,7 +1256,7 @@ export default function BazarManager() {
               </button>
             </div>
             
-            <div className="grid grid-cols-2 sm:flex sm:flex-row sm:items-center sm:flex-wrap gap-2 w-full md:w-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-2 w-full md:w-auto">
               <button
                 onClick={openResponsaveisModal}
                 className="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 w-full justify-center sm:w-auto"
@@ -1526,17 +1526,17 @@ export default function BazarManager() {
                     <Check className="h-5 w-5 text-emerald-600 bg-white p-1 rounded-full border border-emerald-200" />
                     <span>{selectedLabelProductIds.length} {selectedLabelProductIds.length === 1 ? 'produto selecionado' : 'produtos selecionados'} para impressão de etiquetas</span>
                   </div>
-                  <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto justify-end">
                     <button
                       onClick={() => setSelectedLabelProductIds([])}
-                      className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold text-xs px-4 py-2.5 rounded-xl transition-all"
+                      className="w-full sm:w-auto bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold text-xs px-4 py-2.5 rounded-xl transition-all text-center"
                     >
                       Limpar Seleção
                     </button>
                     <button
                       onClick={handlePrintLabels}
                       disabled={loadingLabels}
-                      className="bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+                      className="w-full sm:w-auto bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
                     >
                       {loadingLabels ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
                       Imprimir Etiquetas dos Selecionados ({selectedLabelProductIds.length})
@@ -1648,26 +1648,22 @@ export default function BazarManager() {
                           onClick={(e) => {
                             e.stopPropagation()
                             setShowPDVModal(true)
-                            fetch(`/api/balcao-vendas/produtos/${p.id}/serial-disponivel`)
-                              .then(res => {
-                                if (res.ok) return res.json()
-                                throw new Error('Sem código de barras disponível')
-                              })
-                              .then(data => {
-                                if (data.serialNumber) {
-                                  setCarrinho(prev => {
-                                    if (prev.find(item => item.produtoId === p.id)) return prev
-                                    return [...prev, {
-                                      serialNumber: data.serialNumber,
-                                      produtoId: p.id,
-                                      titulo: p.titulo,
-                                      preco: p.preco,
-                                      needsSerialResolve: false
-                                    }]
-                                  })
-                                }
-                              })
-                              .catch(() => triggerToast('Não foi possível alocar código de barras automaticamente.', true))
+                            setCarrinho(prev => {
+                              const existing = prev.find(item => item.produtoId === p.id)
+                              if (existing) {
+                                const nextQty = Math.min(existing.quantidade + 1, totalAvail)
+                                return prev.map(item => item.produtoId === p.id ? { ...item, quantidade: nextQty } : item)
+                              }
+                              return [...prev, {
+                                produtoId: p.id,
+                                titulo: p.titulo,
+                                preco: p.preco,
+                                quantidade: 1,
+                                maxEstoque: totalAvail,
+                                needsSerialResolve: true,
+                                serialNumber: null
+                              }]
+                            })
                           }}
                           className="text-teal-700 hover:text-teal-855 font-bold hover:underline flex items-center gap-1 cursor-pointer"
                         >
@@ -2376,8 +2372,9 @@ export default function BazarManager() {
                           setSerialNumberInput('')
 
                           // Check if already in checkout cart
-                          if (carrinho.find(c => c.serialNumber === rawSerial)) {
-                            setPdvError(`O código de barras ${rawSerial} já foi inserido no carrinho.`)
+                          const existsBySerial = carrinho.find(c => c.serialNumber === rawSerial)
+                          if (existsBySerial) {
+                            setCarrinho(prev => prev.map(item => item.serialNumber === rawSerial ? { ...item, quantidade: Math.min(item.quantidade + 1, item.maxEstoque) } : item))
                             return
                           }
 
@@ -2388,15 +2385,26 @@ export default function BazarManager() {
                               const list = await res.json()
                               if (list.length > 0) {
                                 const prod = list[0]
-                                setCarrinho(prev => [
-                                  ...prev,
-                                  {
-                                    serialNumber: rawSerial,
-                                    produtoId: prod.id,
-                                    titulo: prod.titulo,
-                                    preco: prod.preco
+                                setCarrinho(prev => {
+                                  const totalAvail = prod.totalEstoque - prod.totalVendido
+                                  const existing = prev.find(item => item.produtoId === prod.id)
+                                  if (existing) {
+                                    const nextQty = Math.min(existing.quantidade + 1, totalAvail)
+                                    return prev.map(item => item.produtoId === prod.id ? { ...item, quantidade: nextQty } : item)
                                   }
-                                ])
+                                  return [
+                                    ...prev,
+                                    {
+                                      serialNumber: rawSerial,
+                                      produtoId: prod.id,
+                                      titulo: prod.titulo,
+                                      preco: prod.preco,
+                                      quantidade: 1,
+                                      maxEstoque: totalAvail,
+                                      needsSerialResolve: false
+                                    }
+                                  ]
+                                })
                                 return
                               }
                               setPdvError(`Código de barras não localizado ou produto não cadastrado neste evento.`)
@@ -2434,25 +2442,57 @@ export default function BazarManager() {
                         
                         {carrinho.length > 0 ? (
                           <div className="space-y-3 divide-y divide-slate-100 max-h-[250px] overflow-y-auto pr-1">
-                            {carrinho.map((item, idx) => (
-                              <div key={idx} className="flex items-center justify-between pt-3 first:pt-0">
-                                <div className="space-y-0.5">
-                                  <h4 className="text-xs font-bold text-slate-800">{item.titulo}</h4>
-                                  <span className="text-[10px] text-slate-500 font-mono font-bold">
-                                    {item.needsSerialResolve ? 'Aguardando alocação automática' : `Código de Barras: ${item.serialNumber}`}
-                                  </span>
+                            {carrinho.map((item, idx) => {
+                              const subtotalItem = item.preco * (item.quantidade || 1)
+                              return (
+                                <div key={idx} className="flex items-center justify-between pt-3 first:pt-0">
+                                  <div className="space-y-0.5 max-w-[45%]">
+                                    <h4 className="text-xs font-bold text-slate-800 truncate" title={item.titulo}>{item.titulo}</h4>
+                                    <span className="text-[9px] text-slate-500 font-mono font-bold block truncate">
+                                      {item.needsSerialResolve ? 'Alocação automática' : `Código: ${item.serialNumber}`}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5 border border-slate-200 rounded-xl px-1.5 py-0.5 bg-slate-50">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const newQty = Math.max(1, (item.quantidade || 1) - 1)
+                                        setCarrinho(prev => prev.map((c, i) => i === idx ? { ...c, quantidade: newQty } : c))
+                                      }}
+                                      className="text-slate-550 hover:text-slate-900 font-black text-xs px-1"
+                                    >
+                                      -
+                                    </button>
+                                    <span className="text-[11px] font-black text-slate-850 min-w-[14px] text-center">
+                                      {item.quantidade || 1}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const newQty = Math.min(item.maxEstoque || 999, (item.quantidade || 1) + 1)
+                                        setCarrinho(prev => prev.map((c, i) => i === idx ? { ...c, quantidade: newQty } : c))
+                                      }}
+                                      className="text-slate-550 hover:text-slate-900 font-black text-xs px-1"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className="text-xs font-black text-slate-900">
+                                      R$ {subtotalItem.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    </span>
+                                    <button
+                                      onClick={() => setCarrinho(carrinho.filter((_, i) => i !== idx))}
+                                      className="text-rose-600 hover:text-rose-800 p-1 hover:bg-rose-50 rounded-lg"
+                                    >
+                                      <Trash className="h-4 w-4" />
+                                    </button>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-4">
-                                  <span className="text-xs font-black text-slate-900">R$ {item.preco?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                                  <button
-                                    onClick={() => setCarrinho(carrinho.filter((_, i) => i !== idx))}
-                                    className="text-rose-600 hover:text-rose-800 p-1 hover:bg-rose-50 rounded-lg"
-                                  >
-                                    <Trash className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
+                              )
+                            })}
                           </div>
                         ) : (
                           <div className="py-12 text-center text-slate-400 italic text-xs">
@@ -2472,7 +2512,7 @@ export default function BazarManager() {
                       <div className="space-y-1">
                         <span className="text-xs text-slate-500 font-bold">Total Geral</span>
                         <div className="text-3xl font-black text-teal-800">
-                          R$ {carrinho.reduce((acc, c) => acc + c.preco, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          R$ {carrinho.reduce((acc, c) => acc + (c.preco * (c.quantidade || 1)), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </div>
                       </div>
 
@@ -2504,24 +2544,41 @@ export default function BazarManager() {
                           if (carrinho.length === 0) return
                           setSubmittingVenda(true)
                           
-                          // Resolve any click items (where needsSerialResolve: true) to fetch real available barcodes
                           const finalSerials = []
                           try {
                             for (let item of carrinho) {
+                              const qty = item.quantidade || 1
                               if (item.needsSerialResolve) {
-                                const serRes = await fetch(`/api/balcao-vendas/produtos/${item.produtoId}/serial-disponivel`)
+                                const serRes = await fetch(`/api/balcao-vendas/produtos/${item.produtoId}/serial-disponivel?limit=${qty}`)
                                 if (serRes.ok) {
-                                  const serialObj = await serRes.json()
-                                  finalSerials.push(serialObj.serialNumber)
+                                  const data = await serRes.json()
+                                  const resolved = data.seriais || []
+                                  if (resolved.length < qty) {
+                                    throw new Error(`Estoque insuficiente para ${item.titulo}. Disponível: ${resolved.length}`)
+                                  }
+                                  finalSerials.push(...resolved)
                                 } else {
                                   throw new Error(`Sem estoque disponível para ${item.titulo}`)
                                 }
                               } else {
                                 finalSerials.push(item.serialNumber)
+                                if (qty > 1) {
+                                  const serRes = await fetch(`/api/balcao-vendas/produtos/${item.produtoId}/serial-disponivel?limit=${qty * 2}`)
+                                  if (serRes.ok) {
+                                    const data = await serRes.json()
+                                    const resolved = (data.seriais || []).filter(s => s !== item.serialNumber)
+                                    const needed = qty - 1
+                                    if (resolved.length < needed) {
+                                      throw new Error(`Estoque insuficiente para ${item.titulo}. Disponível: ${resolved.length + 1}`)
+                                    }
+                                    finalSerials.push(...resolved.slice(0, needed))
+                                  } else {
+                                    throw new Error(`Sem estoque adicional disponível para ${item.titulo}`)
+                                  }
+                                }
                               }
                             }
 
-                            // Confirm checkout
                             const checkoutRes = await fetch('/api/balcao-vendas/vendas/confirmar', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },

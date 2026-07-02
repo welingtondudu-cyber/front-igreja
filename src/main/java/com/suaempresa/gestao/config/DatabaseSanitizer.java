@@ -67,6 +67,29 @@ public class DatabaseSanitizer implements CommandLineRunner {
         }
 
         try {
+            System.out.println("--- EVOLVING MEMBERS SCHEMA FOR ADDRESS AND RELATIONS ---");
+            jdbcTemplate.execute("ALTER TABLE gestao.membros ADD COLUMN IF NOT EXISTS cep VARCHAR(9)");
+            jdbcTemplate.execute("ALTER TABLE gestao.membros ADD COLUMN IF NOT EXISTS logradouro VARCHAR(255)");
+            jdbcTemplate.execute("ALTER TABLE gestao.membros ADD COLUMN IF NOT EXISTS numero VARCHAR(20)");
+            jdbcTemplate.execute("ALTER TABLE gestao.membros ADD COLUMN IF NOT EXISTS complemento VARCHAR(100)");
+            jdbcTemplate.execute("ALTER TABLE gestao.membros ADD COLUMN IF NOT EXISTS bairro VARCHAR(100)");
+            jdbcTemplate.execute("ALTER TABLE gestao.membros ADD COLUMN IF NOT EXISTS cidade VARCHAR(100)");
+            jdbcTemplate.execute("ALTER TABLE gestao.membros ADD COLUMN IF NOT EXISTS estado VARCHAR(2)");
+
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS gestao.membros_relacionamentos (" +
+                    "id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, " +
+                    "membro_id BIGINT REFERENCES gestao.membros(id) ON DELETE CASCADE, " +
+                    "parente_id BIGINT REFERENCES gestao.membros(id) ON DELETE CASCADE, " +
+                    "tipo_vinculo VARCHAR(50) NOT NULL, " +
+                    "data_casamento DATE, " +
+                    "CONSTRAINT unique_relacionamento UNIQUE (membro_id, parente_id, tipo_vinculo)" +
+                    ")");
+            System.out.println("--- MEMBERS SCHEMA EVOLVED SUCCESSFULLY ---");
+        } catch (Exception ex) {
+            System.err.println("Could not evolve members schema: " + ex.getMessage());
+        }
+
+        try {
             System.out.println("--- CREATING BAZAR MODULE TABLES ---");
             jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS gestao.bazar_periodos (" +
                     "id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, " +

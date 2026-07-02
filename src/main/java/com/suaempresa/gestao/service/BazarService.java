@@ -313,12 +313,21 @@ public class BazarService {
     }
 
     @Transactional(readOnly = true)
-    public String obterSerialDisponivel(Long produtoId) {
+    public List<String> obterSeriaisDisponiveis(Long produtoId, Integer limit) {
         List<BazarItemEstoque> disponiveis = bazarItemEstoqueRepository.findByProdutoIdAndStatusItem(produtoId, "DISPONIVEL");
         if (disponiveis.isEmpty()) {
             throw new RegraNegocioException("Não há itens em estoque disponíveis para este produto.");
         }
-        return disponiveis.get(0).getSerialNumber();
+        int size = Math.min(limit != null ? limit : 1, disponiveis.size());
+        return disponiveis.subList(0, size).stream()
+                .map(BazarItemEstoque::getSerialNumber)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public String obterSerialDisponivel(Long produtoId) {
+        List<String> seriais = obterSeriaisDisponiveis(produtoId, 1);
+        return seriais.get(0);
     }
 
     @Transactional

@@ -2,6 +2,8 @@ package com.suaempresa.gestao.controller;
 
 import com.suaempresa.gestao.domain.dto.MembroDetalhadoDTO;
 import com.suaempresa.gestao.domain.dto.MembroFormDTO;
+import com.suaempresa.gestao.domain.dto.MembroRelacionamentoDTO;
+import com.suaempresa.gestao.domain.dto.MembroRelacionamentoFormDTO;
 import com.suaempresa.gestao.service.MembroService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -187,5 +189,41 @@ public class MembroController {
         return ResponseEntity.ok(
             cargoRepository.findAll().stream().map(com.suaempresa.gestao.domain.dto.CargoResumoDTO::fromEntity).toList()
         );
+    }
+
+    @GetMapping("/ativos")
+    @Operation(summary = "Listar membros ativos simplificado", description = "Retorna uma lista resumida de todos os membros ativos para seleção.")
+    public ResponseEntity<java.util.List<com.suaempresa.gestao.domain.dto.MembroSimplificadoDTO>> listarAtivos() {
+        return ResponseEntity.ok(membroService.listarMembrosAtivos());
+    }
+
+    @PostMapping("/relacionamentos")
+    @Operation(summary = "Salvar relacionamento familiar", description = "Vincula dois membros como cônjuge ou pai/mãe, validando a data de casamento.")
+    public ResponseEntity<MembroRelacionamentoDTO> criarRelacionamento(@RequestBody @Valid MembroRelacionamentoFormDTO form) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(membroService.salvarRelacionamento(form));
+    }
+
+    @DeleteMapping("/relacionamentos/{id}")
+    @Operation(summary = "Remover relacionamento familiar", description = "Remove um vínculo familiar entre dois membros pelo ID do relacionamento.")
+    public ResponseEntity<Void> removerRelacionamento(@PathVariable Long id) {
+        membroService.removerRelacionamento(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping(value = "/importar-massa", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Importação massiva de membros via CSV", description = "Importa uma lista de membros, incluindo endereço e prevenindo duplicações de CPF ou E-mail.")
+    public ResponseEntity<Map<String, String>> importarMassa(@RequestParam("file") MultipartFile file) {
+        membroService.importarMassa(file);
+        return ResponseEntity.ok(Map.of("mensagem", "Importação concluída com sucesso!"));
+    }
+
+    @GetMapping(value = "/exportar", produces = "text/csv;charset=UTF-8")
+    @Operation(summary = "Exportação completa de membros", description = "Gera um CSV UTF-8 com BOM contendo a listagem completa dos membros com blocos de endereço.")
+    public ResponseEntity<byte[]> exportarCompleto() {
+        byte[] csvData = membroService.exportarCompletoCsv();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("text/csv;charset=UTF-8"));
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''membros_backup.csv");
+        return ResponseEntity.ok().headers(headers).body(csvData);
     }
 }

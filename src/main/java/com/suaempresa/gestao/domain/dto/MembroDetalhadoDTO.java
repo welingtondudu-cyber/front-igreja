@@ -20,6 +20,15 @@ public record MembroDetalhadoDTO(
         String sexo,
         String cpf,
         String rg,
+        
+        String cep,
+        String logradouro,
+        String numero,
+        String complemento,
+        String bairro,
+        String cidade,
+        String estado,
+
         String tituloCargo,
         String nomeLiderDireto,
         List<String> ministerios,
@@ -28,8 +37,14 @@ public record MembroDetalhadoDTO(
         Long liderDiretoId,
         List<Long> ministeriosIds,
         List<Long> pequenosGruposIds,
-        String observacao) {
+        String observacao,
+        List<MembroRelacionamentoDTO> parentes) {
+
     public static MembroDetalhadoDTO fromEntity(Membro m) {
+        return fromEntity(m, new ArrayList<>());
+    }
+
+    public static MembroDetalhadoDTO fromEntity(Membro m, List<MembroRelacionamentoDTO> parentes) {
         List<String> ministerios = new ArrayList<>();
         List<String> pequenosGrupos = new ArrayList<>();
         List<Long> ministeriosIds = new ArrayList<>();
@@ -64,6 +79,13 @@ public record MembroDetalhadoDTO(
                 m.getSexo(),
                 m.getCpf(),
                 m.getRg(),
+                m.getCep(),
+                m.getLogradouro(),
+                m.getNumero(),
+                m.getComplemento(),
+                m.getBairro(),
+                m.getCidade(),
+                m.getEstado(),
                 m.getCargo() != null ? m.getCargo().getTitulo() : null,
                 m.getLiderDireto() != null ? m.getLiderDireto().getNomeCompleto() : null,
                 ministerios,
@@ -72,6 +94,7 @@ public record MembroDetalhadoDTO(
                 m.getLiderDireto() != null ? m.getLiderDireto().getId() : null,
                 ministeriosIds,
                 pequenosGruposIds,
-                m.getObservacao());
+                m.getObservacao(),
+                parentes);
     }
 }

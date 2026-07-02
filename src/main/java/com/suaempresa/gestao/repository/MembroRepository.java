@@ -42,6 +42,8 @@ public interface MembroRepository extends JpaRepository<Membro, Long>, JpaSpecif
 
     Optional<Membro> findByCpf(String cpf);
 
+    Optional<Membro> findByEmail(String email);
+
     long countByStatusCadastroIgnoreCase(String statusCadastro);
 
     @Query("SELECT COUNT(m) FROM Membro m " +

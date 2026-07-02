@@ -60,6 +60,14 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
   const [memberHistory, setMemberHistory] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
 
+  // Relationship states
+  const [activeMembersList, setActiveMembersList] = useState([])
+  const [relParenteId, setRelParenteId] = useState('')
+  const [relTipoVinculo, setRelTipoVinculo] = useState('CONJUGE')
+  const [relDataCasamento, setRelDataCasamento] = useState('')
+  const [relError, setRelError] = useState(null)
+  const [relLoading, setRelLoading] = useState(false)
+
   const [showImportModal, setShowImportModal] = useState(false)
   const [importFile, setImportFile] = useState(null)
   const [importStatus, setImportStatus] = useState(null) // null | 'success' | 'error'
@@ -79,6 +87,13 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
     nomeCompleto: '',
     cpf: '',
     rg: '',
+    cep: '',
+    logradouro: '',
+    numero: '',
+    complemento: '',
+    bairro: '',
+    cidade: '',
+    estado: '',
     whatsapp: '',
     email: '',
     fotoPerfilUrl: '',
@@ -295,8 +310,11 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
     if (filterAnoDe) url += `&nascimentoDe=${filterAnoDe}-01-01`
     if (filterAnoAte) url += `&nascimentoAte=${filterAnoAte}-12-31`
 
-    // Trigger Download
     window.location.href = url
+  }
+
+  const handleExportBase = () => {
+    window.location.href = '/api/membros/exportar'
   }
 
   const handleImportCSV = async (e) => {
@@ -311,7 +329,7 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
     formData.append('file', importFile)
 
     try {
-      const res = await fetch('/api/membros/importar/csv', {
+      const res = await fetch('/api/membros/importar-massa', {
         method: 'POST',
         body: formData
       })
@@ -343,11 +361,92 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
         setSelectedMember(data)
         setActiveDetailTab('cadastro')
         setMemberHistory([])
+        fetchAtivosSimplificado()
         setShowDetailModal(true)
         fetchMemberHistory(matricula)
       }
     } catch (err) {
       alert('Erro ao buscar detalhes do membro')
+    }
+  }
+
+  const fetchAtivosSimplificado = async () => {
+    try {
+      const res = await fetch('/api/membros/ativos')
+      if (res.ok) {
+        const data = await res.json()
+        setActiveMembersList(data)
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleAddRelacionamento = async (e) => {
+    e.preventDefault()
+    if (!relParenteId) {
+      setRelError('Selecione um membro da lista para vincular.')
+      return
+    }
+
+    setRelLoading(true)
+    setRelError(null)
+
+    const payload = {
+      membroId: selectedMember.id,
+      parenteId: parseInt(relParenteId, 10),
+      tipoVinculo: relTipoVinculo,
+      dataCasamento: relTipoVinculo === 'CONJUGE' && relDataCasamento ? relDataCasamento : null
+    }
+
+    try {
+      const res = await fetch('/api/membros/relacionamentos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      if (res.ok) {
+        const matricula = selectedMember.matricula
+        const detailRes = await fetch(`/api/membros/${matricula}`)
+        if (detailRes.ok) {
+          const updated = await detailRes.json()
+          setSelectedMember(updated)
+        }
+        setRelParenteId('')
+        setRelDataCasamento('')
+        setRelError(null)
+      } else {
+        const problem = await res.json().catch(() => ({}))
+        setRelError(problem.detail || problem.message || 'Erro ao adicionar vínculo familiar.')
+      }
+    } catch (err) {
+      setRelError('Erro de conexão com o servidor.')
+    } finally {
+      setRelLoading(false)
+    }
+  }
+
+  const handleRemoveRelacionamento = async (relId) => {
+    if (!window.confirm('Deseja realmente remover este vínculo familiar?')) return
+
+    try {
+      const res = await fetch(`/api/membros/relacionamentos/${relId}`, {
+        method: 'DELETE'
+      })
+
+      if (res.ok) {
+        const matricula = selectedMember.matricula
+        const detailRes = await fetch(`/api/membros/${matricula}`)
+        if (detailRes.ok) {
+          const updated = await detailRes.json()
+          setSelectedMember(updated)
+        }
+      } else {
+        alert('Erro ao remover relacionamento familiar.')
+      }
+    } catch (err) {
+      console.error(err)
     }
   }
 
@@ -395,6 +494,13 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
               nomeCompleto: detail.nomeCompleto || '',
               cpf: formatCPF(detail.cpf || ''),
               rg: detail.rg || '',
+              cep: detail.cep || '',
+              logradouro: detail.logradouro || '',
+              numero: detail.numero || '',
+              complemento: detail.complemento || '',
+              bairro: detail.bairro || '',
+              cidade: detail.cidade || '',
+              estado: detail.estado || '',
               whatsapp: formatWhatsapp(detail.whatsapp || ''),
               email: detail.email || '',
               fotoPerfilUrl: detail.fotoPerfilUrl || '',
@@ -418,6 +524,14 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
           setFormData({
             nomeCompleto: '',
             cpf: formatCPF(cleanCpf),
+            rg: '',
+            cep: '',
+            logradouro: '',
+            numero: '',
+            complemento: '',
+            bairro: '',
+            cidade: '',
+            estado: '',
             whatsapp: '',
             email: '',
             fotoPerfilUrl: '',
@@ -588,6 +702,14 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
       matricula: selectedMember.matricula,
       nomeCompleto: selectedMember.nomeCompleto || '',
       cpf: formatCPF(selectedMember.cpf || ''),
+      rg: selectedMember.rg || '',
+      cep: selectedMember.cep || '',
+      logradouro: selectedMember.logradouro || '',
+      numero: selectedMember.numero || '',
+      complemento: selectedMember.complemento || '',
+      bairro: selectedMember.bairro || '',
+      cidade: selectedMember.cidade || '',
+      estado: selectedMember.estado || '',
       whatsapp: formatWhatsapp(selectedMember.whatsapp || ''),
       email: selectedMember.email || '',
       fotoPerfilUrl: selectedMember.fotoPerfilUrl || '',
@@ -653,14 +775,14 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
             className="w-full sm:w-auto flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold py-2 px-4 rounded-xl transition-colors text-sm"
           >
             <Upload className="h-4.5 w-4.5" />
-            Importar CSV
+            Importar Planilha
           </button>
           <button
-            onClick={handleExportCSV}
+            onClick={handleExportBase}
             className="w-full sm:w-auto flex items-center justify-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold py-2 px-4 rounded-xl transition-colors text-sm"
           >
             <Download className="h-4.5 w-4.5" />
-            Exportar
+            Exportar Base
           </button>
         </div>
       </div>
@@ -1063,6 +1185,16 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
                 Ficha Cadastral
               </button>
               <button
+                onClick={() => setActiveDetailTab('familia')}
+                className={`py-3 px-4 text-xs font-bold border-b-2 transition-all ${
+                  activeDetailTab === 'familia'
+                    ? 'border-emerald-600 text-emerald-800'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Núcleo Familiar
+              </button>
+              <button
                 onClick={() => setActiveDetailTab('historico')}
                 className={`py-3 px-4 text-xs font-bold border-b-2 transition-all ${
                   activeDetailTab === 'historico'
@@ -1092,6 +1224,29 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
                   <div className="space-y-2 text-sm text-slate-700">
                     <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">WhatsApp:</span> {selectedMember.whatsapp ? formatWhatsapp(selectedMember.whatsapp) : 'Não informado'}</p>
                     <p className="flex items-center gap-2"><Mail className="h-4 w-4 text-slate-400 shrink-0" /> <span className="font-semibold text-slate-500 w-24">E-mail:</span> {selectedMember.email || 'Não informado'}</p>
+                  </div>
+
+                  <div className="pt-4">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">Endereço</h4>
+                  </div>
+                  <div className="space-y-2 text-sm text-slate-700">
+                    <div className="flex items-start gap-2">
+                      <MapPin className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" /> 
+                      <div>
+                        {selectedMember.logradouro ? (
+                          <>
+                            <span className="font-semibold text-slate-800">{selectedMember.logradouro}</span>, {selectedMember.numero || 'S/N'}
+                            {selectedMember.complemento && ` - ${selectedMember.complemento}`}
+                            <br />
+                            <span className="text-slate-500 text-xs">{selectedMember.bairro || 'Sem Bairro'}, {selectedMember.cidade || 'Sem Cidade'} - {selectedMember.estado || 'UF'}</span>
+                            <br />
+                            <span className="text-slate-450 text-[11px] font-mono font-semibold">CEP: {selectedMember.cep || 'Sem CEP'}</span>
+                          </>
+                        ) : (
+                          <span className="text-slate-400 italic">Endereço não cadastrado</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -1139,6 +1294,148 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
                     </p>
                   </div>
                 )}
+              </div>
+            )}
+
+            {activeDetailTab === 'familia' && (
+              <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
+                <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-3">
+                  <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <Users className="h-4.5 w-4.5 text-emerald-700" />
+                    Adicionar Vínculo Familiar
+                  </h4>
+                  <form onSubmit={handleAddRelacionamento} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="sm:col-span-1">
+                        <label className="block text-xs font-semibold text-slate-500 mb-1">
+                          Selecionar Parente
+                        </label>
+                        <select
+                          value={relParenteId}
+                          onChange={(e) => setRelParenteId(e.target.value)}
+                          className="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs focus:outline-none bg-white font-semibold"
+                        >
+                          <option value="">Selecione...</option>
+                          {activeMembersList
+                            .filter(m => m.id !== selectedMember.id)
+                            .map((m) => (
+                              <option key={m.id} value={m.id}>
+                                {m.nomeCompleto}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 mb-1">
+                          Vínculo Familiar
+                        </label>
+                        <select
+                          value={relTipoVinculo}
+                          onChange={(e) => setRelTipoVinculo(e.target.value)}
+                          className="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs focus:outline-none bg-white font-semibold"
+                        >
+                          <option value="CONJUGE">Cônjuge</option>
+                          <option value="PAI_MAE">Pai/Mãe</option>
+                        </select>
+                      </div>
+
+                      {relTipoVinculo === 'CONJUGE' && (
+                        <div className="animate-in fade-in duration-150">
+                          <label className="block text-xs font-semibold text-slate-500 mb-1">
+                            Data de Casamento
+                          </label>
+                          <input
+                            type="date"
+                            value={relDataCasamento}
+                            onChange={(e) => setRelDataCasamento(e.target.value)}
+                            className="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs focus:outline-none bg-white font-semibold"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {relError && (
+                      <p className="text-[10px] text-rose-600 font-bold flex items-center gap-1">
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        {relError}
+                      </p>
+                    )}
+
+                    <div className="flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={relLoading}
+                        className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all shadow-xs flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        {relLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                        Adicionar Relacionamento
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                <div className="space-y-3">
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">
+                    Membros Vinculados ({selectedMember.parentes?.length || 0})
+                  </h4>
+                  
+                  {selectedMember.parentes && selectedMember.parentes.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {selectedMember.parentes.map((p) => {
+                        let vinculoLabel = 'Parente'
+                        if (p.tipoVinculo === 'CONJUGE') vinculoLabel = 'Cônjuge'
+                        else if (p.tipoVinculo === 'PAI_MAE') vinculoLabel = 'Pai/Mãe'
+                        else if (p.tipoVinculo === 'FILHO_A') vinculoLabel = 'Filho(a)'
+                        
+                        return (
+                          <div key={p.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-xs relative overflow-hidden group">
+                            <div className="flex items-center gap-3">
+                              <div className="h-11 w-11 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
+                                {p.fotoPerfilUrl ? (
+                                  <img src={p.fotoPerfilUrl} alt={p.nomeCompleto} className="w-full h-full object-cover" />
+                                ) : (
+                                  <User className="h-5 w-5 text-slate-400" />
+                                )}
+                              </div>
+                              
+                              <div>
+                                <h5 className="text-xs font-extrabold text-slate-800 line-clamp-1">{p.nomeCompleto}</h5>
+                                <span className={`inline-block text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full mt-0.5 ${
+                                  p.tipoVinculo === 'CONJUGE' 
+                                    ? 'bg-amber-50 text-amber-800 border border-amber-200/50' 
+                                    : p.tipoVinculo === 'PAI_MAE'
+                                    ? 'bg-sky-50 text-sky-800 border border-sky-200/50'
+                                    : 'bg-emerald-50 text-emerald-800 border border-emerald-250/50'
+                                }`}>
+                                  {vinculoLabel}
+                                </span>
+                                {p.tipoVinculo === 'CONJUGE' && p.dataCasamento && (
+                                  <div className="text-[10px] text-slate-500 font-semibold mt-1 flex items-center gap-1">
+                                    <span>💍 Casados desde:</span>
+                                    <span className="font-bold text-slate-700">{p.dataCasamento}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={() => handleRemoveRelacionamento(p.id)}
+                              className="text-slate-400 hover:text-rose-600 p-1.5 hover:bg-rose-50 rounded-lg transition-all"
+                              title="Remover relacionamento"
+                            >
+                              <Trash2 className="h-4.5 w-4.5" />
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="py-8 text-center text-slate-450 italic text-xs">
+                      Nenhum relacionamento familiar cadastrado para este membro.
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1395,7 +1692,7 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
                   >
                     Dados Pessoais
                   </button>
-                  <button
+                   <button
                     type="button"
                     onClick={() => setWizardTab('contato')}
                     className={`flex-1 py-3 text-center border-b-2 transition-colors ${
@@ -1403,6 +1700,15 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
                     }`}
                   >
                     Contato
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWizardTab('endereco')}
+                    className={`flex-1 py-3 text-center border-b-2 transition-colors ${
+                      wizardTab === 'endereco' ? 'border-emerald-700 text-emerald-800 bg-white' : 'border-transparent hover:text-slate-800'
+                    }`}
+                  >
+                    Endereço
                   </button>
                   <button
                     type="button"
@@ -1588,11 +1894,139 @@ export default function MembrosManager({ onViewOrganograma, initialMemberMatricu
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                           className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-600"
                         />
+                       </div>
+                    </div>
+                  )}
+
+                  {/* TAB 3: ENDEREÇO */}
+                  {wizardTab === 'endereco' && (
+                    <div className="space-y-4 animate-in fade-in duration-200">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="sm:col-span-1">
+                          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                            CEP
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="00000-000"
+                            maxLength={9}
+                            value={formData.cep}
+                            onChange={(e) => {
+                              const rawVal = e.target.value.replace(/\D/g, '')
+                              let masked = rawVal
+                              if (rawVal.length > 5) {
+                                masked = `${rawVal.slice(0, 5)}-${rawVal.slice(5, 8)}`
+                              }
+                              setFormData({ ...formData, cep: masked })
+                              
+                              if (rawVal.length === 8) {
+                                fetch(`https://viacep.com.br/ws/${rawVal}/json/`)
+                                  .then(res => {
+                                    if (res.ok) return res.json()
+                                    throw new Error()
+                                  })
+                                  .then(data => {
+                                    if (!data.erro) {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        cep: masked,
+                                        logradouro: data.logradouro || '',
+                                        bairro: data.bairro || '',
+                                        cidade: data.localidade || '',
+                                        estado: data.uf || ''
+                                      }))
+                                    }
+                                  })
+                                  .catch(err => console.error("Falha ao buscar CEP: ", err))
+                              }
+                            }}
+                            className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-600 font-mono font-bold"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                            Logradouro
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Rua, Avenida..."
+                            value={formData.logradouro}
+                            onChange={(e) => setFormData({ ...formData, logradouro: e.target.value })}
+                            className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-600 font-semibold"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                            Número
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Nº..."
+                            value={formData.numero}
+                            onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
+                            className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-600 font-semibold"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                            Complemento
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Apto, Bloco..."
+                            value={formData.complemento}
+                            onChange={(e) => setFormData({ ...formData, complemento: e.target.value })}
+                            className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-600 font-semibold"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                            Bairro
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Bairro..."
+                            value={formData.bairro}
+                            onChange={(e) => setFormData({ ...formData, bairro: e.target.value })}
+                            className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-600 font-semibold"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                            Cidade
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Cidade..."
+                            value={formData.cidade}
+                            onChange={(e) => setFormData({ ...formData, cidade: e.target.value })}
+                            className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-600 font-semibold"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                            Estado
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="UF..."
+                            maxLength={2}
+                            value={formData.estado}
+                            onChange={(e) => setFormData({ ...formData, estado: e.target.value.toUpperCase() })}
+                            className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-600 font-semibold uppercase"
+                          />
+                        </div>
                       </div>
                     </div>
                   )}
 
-                  {/* TAB 3: DADOS ECLESIASTICOS */}
+                  {/* TAB 4: DADOS ECLESIASTICOS */}
                   {wizardTab === 'eclesiasticos' && (
                     <div className="space-y-4 animate-in fade-in duration-200">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

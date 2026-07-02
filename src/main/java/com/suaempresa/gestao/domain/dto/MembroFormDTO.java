@@ -14,6 +14,15 @@ public record MembroFormDTO(
         String sexo,
         String cpf,
         String rg,
+        
+        String cep,
+        String logradouro,
+        String numero,
+        String complemento,
+        String bairro,
+        String cidade,
+        String estado,
+
         Long cargoId,
         Long liderDiretoId,
         java.util.List<Long> ministeriosIds,

@@ -43,6 +43,14 @@ public class Membro {
 
     private String rg;
 
+    private String cep;
+    private String logradouro;
+    private String numero;
+    private String complemento;
+    private String bairro;
+    private String cidade;
+    private String estado;
+
     @Column(name = "observacao", length = 1000)
     private String observacao;
 

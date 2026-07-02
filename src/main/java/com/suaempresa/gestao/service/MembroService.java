@@ -33,6 +33,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.suaempresa.gestao.domain.entity.MembroRelacionamento;
+import com.suaempresa.gestao.repository.MembroRelacionamentoRepository;
+import com.suaempresa.gestao.domain.dto.MembroRelacionamentoDTO;
+import com.suaempresa.gestao.domain.dto.MembroRelacionamentoFormDTO;
+
 import com.suaempresa.gestao.domain.entity.MembroHistorico;
 import com.suaempresa.gestao.repository.MembroHistoricoRepository;
 
@@ -45,6 +50,7 @@ public class MembroService {
     private final GrupoRepository grupoRepository;
     private final MembroGrupoRepository membroGrupoRepository;
     private final MembroHistoricoRepository membroHistoricoRepository;
+    private final MembroRelacionamentoRepository membroRelacionamentoRepository;
 
     // ─── LISTAR COM FILTROS + PAGINAÇÃO ────────────────────────────────────────
 
@@ -73,7 +79,8 @@ public class MembroService {
     public MembroDetalhadoDTO buscarPorId(Long id) {
         Membro membro = membroRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
-        return MembroDetalhadoDTO.fromEntity(membro);
+        List<MembroRelacionamentoDTO> parentes = obterParentesDiretos(id);
+        return MembroDetalhadoDTO.fromEntity(membro, parentes);
     }
 
     // ─── CRIAR ─────────────────────────────────────────────────────────────────
@@ -156,7 +163,8 @@ public class MembroService {
             throw new RegraNegocioException("CPF já cadastrado para outro membro.");
         }
         atualizarGrupos(membro, dto.ministeriosIds(), dto.pequenosGruposIds());
-        return MembroDetalhadoDTO.fromEntity(membro);
+        List<MembroRelacionamentoDTO> parentes = obterParentesDiretos(id);
+        return MembroDetalhadoDTO.fromEntity(membro, parentes);
     }
 
     // ─── EXPORTAR CSV (UTF-8 com BOM para Excel) ───────────────────────────────
@@ -347,6 +355,13 @@ public class MembroService {
         if (dto.rg() != null) {
             membro.setRg(dto.rg().trim());
         }
+        if (dto.cep() != null) membro.setCep(dto.cep());
+        if (dto.logradouro() != null) membro.setLogradouro(dto.logradouro());
+        if (dto.numero() != null) membro.setNumero(dto.numero());
+        if (dto.complemento() != null) membro.setComplemento(dto.complemento());
+        if (dto.bairro() != null) membro.setBairro(dto.bairro());
+        if (dto.cidade() != null) membro.setCidade(dto.cidade());
+        if (dto.estado() != null) membro.setEstado(dto.estado());
         if (dto.observacao() != null) {
             membro.setObservacao(dto.observacao());
         }
@@ -461,5 +476,262 @@ public class MembroService {
     @Transactional(readOnly = true)
     public List<MembroHistorico> obterHistoricoMembro(Long membroId) {
         return membroHistoricoRepository.findByMembroIdOrderByDataAlteracaoDesc(membroId);
+    }
+
+    private List<MembroRelacionamentoDTO> obterParentesDiretos(Long membroId) {
+        List<MembroRelacionamento> rels = membroRelacionamentoRepository.findByMembroId(membroId);
+        List<MembroRelacionamento> relsParente = membroRelacionamentoRepository.findByParenteId(membroId);
+        
+        List<MembroRelacionamentoDTO> list = new ArrayList<>();
+        java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        
+        for (MembroRelacionamento r : rels) {
+            Membro p = r.getParente();
+            String dateStr = r.getDataCasamento() != null ? r.getDataCasamento().format(dtf) : null;
+            list.add(new MembroRelacionamentoDTO(
+                r.getId(),
+                p.getId(),
+                p.getNomeCompleto(),
+                p.getFotoPerfilUrl(),
+                r.getTipoVinculo(),
+                dateStr
+            ));
+        }
+        
+        for (MembroRelacionamento r : relsParente) {
+            Membro m = r.getMembro();
+            String dateStr = r.getDataCasamento() != null ? r.getDataCasamento().format(dtf) : null;
+            String vinculo = r.getTipoVinculo();
+            if ("PAI_MAE".equals(vinculo)) {
+                vinculo = "FILHO_A";
+            }
+            list.add(new MembroRelacionamentoDTO(
+                r.getId(),
+                m.getId(),
+                m.getNomeCompleto(),
+                m.getFotoPerfilUrl(),
+                vinculo,
+                dateStr
+            ));
+        }
+        
+        return list;
+    }
+
+    @Transactional
+    public MembroRelacionamentoDTO salvarRelacionamento(MembroRelacionamentoFormDTO form) {
+        if (form.membroId().equals(form.parenteId())) {
+            throw new RegraNegocioException("Não é possível criar um relacionamento com a própria pessoa.");
+        }
+        
+        Membro membro = membroRepository.findById(form.membroId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro foco não encontrado"));
+        Membro parente = membroRepository.findById(form.parenteId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Parente não encontrado"));
+                
+        String vinculo = form.tipoVinculo().toUpperCase().trim();
+        if (!"CONJUGE".equals(vinculo) && !"PAI_MAE".equals(vinculo)) {
+            throw new RegraNegocioException("Tipo de vínculo inválido. Deve ser 'CONJUGE' ou 'PAI_MAE'.");
+        }
+        
+        LocalDate dataCasamento = null;
+        if ("CONJUGE".equals(vinculo)) {
+            dataCasamento = form.dataCasamento();
+        } else {
+            if (form.dataCasamento() != null) {
+                throw new RegraNegocioException("Data de casamento não é permitida para o tipo de vínculo '" + vinculo + "'.");
+            }
+        }
+        
+        Optional<MembroRelacionamento> existente = membroRelacionamentoRepository.findAll().stream()
+                .filter(r -> (r.getMembro().getId().equals(form.membroId()) && r.getParente().getId().equals(form.parenteId()) && r.getTipoVinculo().equals(vinculo))
+                        || (r.getMembro().getId().equals(form.parenteId()) && r.getParente().getId().equals(form.membroId()) && r.getTipoVinculo().equals(vinculo)))
+                .findFirst();
+                
+        if (existente.isPresent()) {
+            throw new RegraNegocioException("Este relacionamento familiar já está cadastrado.");
+        }
+        
+        MembroRelacionamento rel = MembroRelacionamento.builder()
+                .membro(membro)
+                .parente(parente)
+                .tipoVinculo(vinculo)
+                .dataCasamento(dataCasamento)
+                .build();
+                
+        rel = membroRelacionamentoRepository.save(rel);
+        
+        java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        return new MembroRelacionamentoDTO(
+                rel.getId(),
+                parente.getId(),
+                parente.getNomeCompleto(),
+                parente.getFotoPerfilUrl(),
+                rel.getTipoVinculo(),
+                rel.getDataCasamento() != null ? rel.getDataCasamento().format(dtf) : null
+        );
+    }
+    
+    @Transactional
+    public void removerRelacionamento(Long id) {
+        if (!membroRelacionamentoRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Relacionamento não encontrado");
+        }
+        membroRelacionamentoRepository.deleteById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] exportarCompletoCsv() {
+        List<Membro> membros = membroRepository.findAll();
+        StringBuilder csv = new StringBuilder();
+
+        csv.append("matricula,nome_completo,cpf,whatsapp,email,foto_perfil_url,status_cadastro,data_adesao,data_nascimento,sexo,titulo_cargo,ministerios,pequenos_grupos,cep,logradouro,numero,complemento,bairro,cidade,estado\n");
+
+        for (Membro m : membros) {
+            String cargoTitulo = m.getCargo() != null ? m.getCargo().getTitulo() : "";
+            String matricula = m.getId() != null ? String.format("%04d", m.getId()) : "";
+
+            List<String> ministeriosList = new ArrayList<>();
+            List<String> pequenosGruposList = new ArrayList<>();
+            if (m.getMembrosGrupos() != null) {
+                for (MembroGrupo mg : m.getMembrosGrupos()) {
+                    if (mg.getGrupo() != null) {
+                        if (mg.getGrupo().getTipoGrupo() == TipoGrupo.MINISTERIO) {
+                            ministeriosList.add(mg.getGrupo().getNomeGrupo());
+                        } else if (mg.getGrupo().getTipoGrupo() == TipoGrupo.PEQUENO_GRUPO
+                                || mg.getGrupo().getTipoGrupo() == TipoGrupo.SOCIEDADE_INTERNA
+                                || mg.getGrupo().getTipoGrupo() == TipoGrupo.SOCIEDADES_INTERNAS) {
+                            pequenosGruposList.add(mg.getGrupo().getNomeGrupo());
+                        }
+                    }
+                }
+            }
+            String ministeriosStr = String.join("; ", ministeriosList);
+            String pequenosGruposStr = String.join("; ", pequenosGruposList);
+
+            csv.append(String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+                    matricula,
+                    csvField(m.getNomeCompleto()),
+                    csvField(m.getCpf()),
+                    csvField(m.getWhatsapp()),
+                    csvField(m.getEmail()),
+                    csvField(m.getFotoPerfilUrl()),
+                    csvField(m.getStatusCadastro()),
+                    m.getDataAdesao() != null ? m.getDataAdesao().toString() : "",
+                    m.getDataNascimento() != null ? m.getDataNascimento().toString() : "",
+                    csvField(m.getSexo()),
+                    csvField(cargoTitulo),
+                    csvField(ministeriosStr),
+                    csvField(pequenosGruposStr),
+                    csvField(m.getCep()),
+                    csvField(m.getLogradouro()),
+                    csvField(m.getNumero()),
+                    csvField(m.getComplemento()),
+                    csvField(m.getBairro()),
+                    csvField(m.getCidade()),
+                    csvField(m.getEstado())
+            ));
+        }
+
+        byte[] bom = new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
+        byte[] content = csv.toString().getBytes(StandardCharsets.UTF_8);
+        byte[] result = new byte[bom.length + content.length];
+        System.arraycopy(bom, 0, result, 0, bom.length);
+        System.arraycopy(content, 0, result, bom.length, content.length);
+        return result;
+    }
+
+    @Transactional
+    public void importarMassa(MultipartFile file) {
+        try {
+            InputStream inputStream = file.getInputStream();
+            byte[] primeiros = inputStream.readNBytes(3);
+            if (primeiros[0] != (byte) 0xEF || primeiros[1] != (byte) 0xBB || primeiros[2] != (byte) 0xBF) {
+                inputStream = file.getInputStream();
+            }
+
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+                String line;
+                boolean firstLine = true;
+                List<Membro> membrosToSave = new ArrayList<>();
+
+                while ((line = br.readLine()) != null) {
+                    if (firstLine) {
+                        firstLine = false;
+                        continue;
+                    }
+                    if (line.isBlank())
+                        continue;
+
+                    String[] cols = splitCsvLine(line);
+                    if (cols.length < 11)
+                        continue;
+
+                    String nome = unescapeCsv(cols[1]);
+                    String cpf = unescapeCsv(cols[2]).replaceAll("\\D", "");
+                    String whatsapp = unescapeCsv(cols[3]);
+                    String email = unescapeCsv(cols[4]);
+                    String fotoPerfil = unescapeCsv(cols[5]);
+                    String status = unescapeCsv(cols[6]);
+                    String dataAdesao = unescapeCsv(cols[7]);
+                    String dataNasc = unescapeCsv(cols[8]);
+                    String sexo = unescapeCsv(cols[9]);
+                    String tituloCargo = unescapeCsv(cols[10]);
+
+                    if (!cpf.isBlank() && membroRepository.findByCpf(cpf).isPresent()) {
+                        continue;
+                    }
+                    
+                    if (email != null && !email.isBlank() && membroRepository.findByEmail(email).isPresent()) {
+                        continue;
+                    }
+
+                    Membro membro = new Membro();
+                    
+                    if (nome != null && !nome.isBlank())
+                        membro.setNomeCompleto(nome);
+                    if (!cpf.isBlank())
+                        membro.setCpf(cpf);
+                    if (whatsapp != null && !whatsapp.isBlank())
+                        membro.setWhatsapp(whatsapp);
+                    if (email != null && !email.isBlank())
+                        membro.setEmail(email);
+                    if (fotoPerfil != null && !fotoPerfil.isBlank())
+                        membro.setFotoPerfilUrl(fotoPerfil);
+                    if (status != null && !status.isBlank())
+                        membro.setStatusCadastro(status);
+
+                    if (sexo != null && !sexo.isBlank()) {
+                        validarSexo(sexo);
+                        membro.setSexo(sexo.trim().equalsIgnoreCase("masculino") ? "Masculino" : "Feminino");
+                    }
+                    parseDateSafe(dataAdesao).ifPresent(membro::setDataAdesao);
+                    parseDateSafe(dataNasc).ifPresent(membro::setDataNascimento);
+
+                    if (tituloCargo != null && !tituloCargo.isBlank()) {
+                        Cargo cargo = cargoRepository.findByTituloIgnoreCase(tituloCargo.trim())
+                                .orElseGet(() -> cargoRepository.save(
+                                        Cargo.builder().titulo(tituloCargo.trim()).pesoHierarquico(0).build()));
+                        membro.setCargo(cargo);
+                    }
+
+                    if (cols.length >= 20) {
+                        membro.setCep(unescapeCsv(cols[13]));
+                        membro.setLogradouro(unescapeCsv(cols[14]));
+                        membro.setNumero(unescapeCsv(cols[15]));
+                        membro.setComplemento(unescapeCsv(cols[16]));
+                        membro.setBairro(unescapeCsv(cols[17]));
+                        membro.setCidade(unescapeCsv(cols[18]));
+                        membro.setEstado(unescapeCsv(cols[19]));
+                    }
+
+                    membrosToSave.add(membro);
+                }
+
+                membroRepository.saveAll(membrosToSave);
+            }
+        } catch (IOException e) {
+            throw new RegraNegocioException("Erro ao processar arquivo de importação: " + e.getMessage());
+        }
     }
 }
