@@ -148,6 +148,7 @@ export default function BazarManager() {
   const [showEstornoModal, setShowEstornoModal] = useState(false)
   const [estornoBarcode, setEstornoBarcode] = useState('')
   const [estornoSelectedMembroId, setEstornoSelectedMembroId] = useState('')
+  const [estornoQuantidade, setEstornoQuantidade] = useState(1)
 
   // Label Printing states
   const [selectedLabelProductIds, setSelectedLabelProductIds] = useState([])
@@ -757,7 +758,7 @@ export default function BazarManager() {
       return
     }
     try {
-      const res = await fetch(`/api/balcao-vendas/itens/estorno?serialNumber=${encodeURIComponent(estornoBarcode.trim())}&membroId=${estornoSelectedMembroId}`, {
+      const res = await fetch(`/api/balcao-vendas/itens/estorno?serialNumber=${encodeURIComponent(estornoBarcode.trim())}&membroId=${estornoSelectedMembroId}&quantidade=${estornoQuantidade}`, {
         method: 'POST'
       })
       if (res.ok) {
@@ -765,6 +766,7 @@ export default function BazarManager() {
         setShowEstornoModal(false)
         setEstornoBarcode('')
         setEstornoSelectedMembroId('')
+        setEstornoQuantidade(1)
         loadDashboard(selectedBazar.id)
         loadProdutos(selectedBazar.id)
       } else {
@@ -1292,6 +1294,7 @@ export default function BazarManager() {
                 onClick={() => {
                   setEstornoBarcode('')
                   setEstornoSelectedMembroId('')
+                  setEstornoQuantidade(1)
                   setShowEstornoModal(true)
                 }}
                 className="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 w-full justify-center sm:w-auto"
@@ -2719,16 +2722,29 @@ export default function BazarManager() {
                     Informe o código de barras do item vendido. Ao confirmar, o valor arrecadado será reduzido e o item retornará automaticamente ao estoque com status <strong>Disponível</strong>.
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Código de Barras</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ex: CB3E8D9F"
-                      value={estornoBarcode}
-                      onChange={(e) => setEstornoBarcode(e.target.value)}
-                      className="w-full border border-slate-350 rounded-xl px-3 py-2.5 text-sm font-mono font-bold uppercase focus:outline-none focus:border-teal-650 bg-slate-55/5 focus:bg-white"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Código de Barras</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ex: CB3E8D9F"
+                        value={estornoBarcode}
+                        onChange={(e) => setEstornoBarcode(e.target.value)}
+                        className="w-full border border-slate-350 rounded-xl px-3 py-2.5 text-sm font-mono font-bold uppercase focus:outline-none focus:border-teal-650 bg-slate-55/5 focus:bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Quantidade</label>
+                      <input
+                        type="number"
+                        required
+                        min={1}
+                        value={estornoQuantidade}
+                        onChange={(e) => setEstornoQuantidade(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                        className="w-full border border-slate-350 rounded-xl px-3 py-2.5 text-sm font-bold focus:outline-none focus:border-teal-650 bg-slate-55/5 focus:bg-white text-center"
+                      />
+                    </div>
                   </div>
 
                   {responsaveis.length === 0 ? (

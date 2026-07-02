@@ -389,6 +389,11 @@ public class BazarService {
 
     @Transactional
     public void estornarItem(String serialNumber, Long membroId) {
+        estornarItem(serialNumber, membroId, 1);
+    }
+
+    @Transactional
+    public void estornarItem(String serialNumber, Long membroId, Integer quantidade) {
         BazarItemEstoque item = bazarItemEstoqueRepository.findBySerialNumber(serialNumber)
                 .orElseThrow(() -> new RegraNegocioException("Item de estoque não encontrado"));
         
@@ -402,25 +407,53 @@ public class BazarService {
                 .orElseThrow(() -> new RegraNegocioException("Membro não encontrado"));
         
         Long vendaId = item.getVendaId();
+        int qtdEstorno = quantidade != null ? quantidade : 1;
+        if (qtdEstorno <= 0) {
+            throw new RegraNegocioException("Quantidade de estorno inválida.");
+        }
+
         if (vendaId != null) {
+            List<BazarItemEstoque> itensDoProdutoNaVenda = bazarItemEstoqueRepository.findByVendaId(vendaId)
+                    .stream()
+                    .filter(i -> item.getProduto().getId().equals(i.getProduto().getId()) && "VENDIDO".equalsIgnoreCase(i.getStatusItem()))
+                    .toList();
+
+            if (qtdEstorno > itensDoProdutoNaVenda.size()) {
+                throw new RegraNegocioException("Quantidade solicitada (" + qtdEstorno + ") é maior do que a quantidade vendida deste produto nesta venda (" + itensDoProdutoNaVenda.size() + ").");
+            }
+
             BazarVenda venda = bazarVendaRepository.findById(vendaId)
                     .orElseThrow(() -> new RegraNegocioException("Venda não encontrada"));
-            BigDecimal novoValorTotal = venda.getValorTotal().subtract(item.getProduto().getPreco());
+
+            BigDecimal valorEstornar = item.getProduto().getPreco().multiply(BigDecimal.valueOf(qtdEstorno));
+            BigDecimal novoValorTotal = venda.getValorTotal().subtract(valorEstornar);
+
             if (novoValorTotal.compareTo(BigDecimal.ZERO) <= 0) {
                 bazarVendaRepository.delete(venda);
             } else {
                 venda.setValorTotal(novoValorTotal);
                 bazarVendaRepository.save(venda);
             }
-        }
 
-        item.setStatusItem("DISPONIVEL");
-        item.setVendaId(null);
-        item.setDataAtualizacao(LocalDateTime.now());
-        bazarItemEstoqueRepository.save(item);
-        
-        registrarHistorico(item.getProduto().getBazar().getId(), membroId, "ESTORNO_ITEM", 
-            "Item '" + item.getProduto().getTitulo() + "' (Código: " + serialNumber + ") foi estornado por " + membro.getNomeCompleto() + ". O item retornou ao estoque.");
+            for (int i = 0; i < qtdEstorno; i++) {
+                BazarItemEstoque itemEstornar = itensDoProdutoNaVenda.get(i);
+                itemEstornar.setStatusItem("DISPONIVEL");
+                itemEstornar.setVendaId(null);
+                itemEstornar.setDataAtualizacao(LocalDateTime.now());
+                bazarItemEstoqueRepository.save(itemEstornar);
+            }
+
+            registrarHistorico(item.getProduto().getBazar().getId(), membroId, "ESTORNO_ITEM", 
+                "Estorno de " + qtdEstorno + " unidade(s) do produto '" + item.getProduto().getTitulo() + "' (Venda ID: " + vendaId + ") efetuado por " + membro.getNomeCompleto() + ". Os itens retornaram ao estoque.");
+        } else {
+            item.setStatusItem("DISPONIVEL");
+            item.setVendaId(null);
+            item.setDataAtualizacao(LocalDateTime.now());
+            bazarItemEstoqueRepository.save(item);
+            
+            registrarHistorico(item.getProduto().getBazar().getId(), membroId, "ESTORNO_ITEM", 
+                "Item '" + item.getProduto().getTitulo() + "' (Código: " + serialNumber + ") foi estornado por " + membro.getNomeCompleto() + ".");
+        }
     }
 
     @Transactional(readOnly = true)

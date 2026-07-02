@@ -172,8 +172,9 @@ public class BazarController {
     @Operation(summary = "Estornar item de estoque (código de barras) individual devolvendo para disponível")
     public ResponseEntity<Void> estornarItem(
             @RequestParam String serialNumber,
-            @RequestParam Long membroId) {
-        bazarService.estornarItem(serialNumber, membroId);
+            @RequestParam Long membroId,
+            @RequestParam(required = false, defaultValue = "1") Integer quantidade) {
+        bazarService.estornarItem(serialNumber, membroId, quantidade);
         return ResponseEntity.ok().build();
     }
 
